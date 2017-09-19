@@ -20,6 +20,7 @@
 
 
 void TestBloomFilter();
+void TestFindSubstring();
 
 int main(void)
 {
@@ -54,6 +55,10 @@ int main(void)
       case 'Q':
         // get argument
         std::cin >> strBuffer;
+
+#ifdef DBG
+        std::cout << "(main) call query" << std::endl;
+#endif
 
         std::cout << s.query(strBuffer) << std::endl;
         break;
