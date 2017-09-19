@@ -1,4 +1,4 @@
-#include <signal.h>
+#include <Signal.h>
 #include <iostream>
 
 Signal::Signal(const int n) {

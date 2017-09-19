@@ -11,12 +11,21 @@
 #include <string>
 
 #include <main.h>
-#include <signal.h>
+#include <Signal.h>
+#include <BloomFilter.h>
+
+#include <vector>
 
 #define RESERVED_CAPACITY 1024
 
+
+void TestBloomFilter();
+
 int main(void)
 {
+  TestBloomFilter();
+
+  
   int numberOfStrings = 0;
   std::cin >> numberOfStrings;
 
@@ -38,6 +47,8 @@ int main(void)
 
   // get command
   std::cin >> strBuffer;
+
+  // To the end of stdin
   while (strBuffer.length() != 0) {
 
     switch (strBuffer[0]) {
@@ -61,14 +72,55 @@ int main(void)
         break;
       default:
         ERROR_MSG("(in switch) Default case is not exist.\n");
+#ifdef DBG
         assert(false);
+#else
+        return -1;
+#endif
     }
-
     strBuffer.clear();
+
     // get next command
     std::cin >> strBuffer;
   }
 
-  printf("Hello, world!\n");
   return 0;
+}
+
+void TestBloomFilter() {
+  
+  uint64_t n = 0;
+  std::cin >> n;
+  std::string tempStr;
+  std::getline(std::cin, tempStr);
+  double errProb = 0.01;
+
+  BloomFilter bf(n, errProb);
+
+  std::vector<std::string> v;
+
+  std::string strBuffer;
+  strBuffer.reserve(RESERVED_CAPACITY);
+
+  for (uint64_t i = 0; i < n; ++i) {
+    // TODO: Parallelizing or not. Which one is fast?
+    std::getline(std::cin, strBuffer);
+
+    v.push_back(strBuffer);
+    std::cout << strBuffer << std::endl;
+
+    bf.insert(strBuffer);
+    strBuffer.clear();
+  }
+
+
+  for (auto i : v) {
+    if (bf.lookup(i)) {
+      std::cout << i << " is found" << std::endl;
+    } else {
+      std::cout << i << " is not found" << std::endl;
+    }
+  }
+
+  exit(0);
 }
