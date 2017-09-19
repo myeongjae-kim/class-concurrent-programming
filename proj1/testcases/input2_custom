@@ -1,0 +1,13 @@
+3
+apple
+pineapple
+application
+Q penpineappleapplepen
+A app
+Q penpineappleapplepen
+A tropine
+D apple
+Q abcdefghijklmnopqrstropineappleuvwxyz
+R apple
+R pineapple
+R application

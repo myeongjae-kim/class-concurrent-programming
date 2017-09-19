@@ -23,8 +23,7 @@ void TestBloomFilter();
 
 int main(void)
 {
-  TestBloomFilter();
-
+  // TestBloomFilter();
   
   int numberOfStrings = 0;
   std::cin >> numberOfStrings;
@@ -70,6 +69,22 @@ int main(void)
 
         s.del(strBuffer);
         break;
+
+#ifdef DBG
+      case 'R':
+        // get argument
+        std::cin >> strBuffer;
+
+        std::cout << strBuffer << " is ";
+        if(s.isRegistered(strBuffer)) {
+          std::cout << "registered." << std::endl;
+        } else {
+          std::cout << "not registered." << std::endl;
+        }
+
+        break;
+#endif
+
       default:
         ERROR_MSG("(in switch) Default case is not exist.\n");
 #ifdef DBG
@@ -83,6 +98,10 @@ int main(void)
     // get next command
     std::cin >> strBuffer;
   }
+
+#ifdef DBG
+  s.printLengthsOfStringsInBloomFilter();
+#endif
 
   return 0;
 }

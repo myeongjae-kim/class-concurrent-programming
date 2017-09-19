@@ -3,12 +3,16 @@
 
 #include <cstdint>
 #include <string>
+#include <BloomFilter.h>
+#include <unordered_map>
 
 class Signal
 {
 private:
   uint32_t numberOfStrings;
-  // Bloom Filter should be included.
+  BloomFilter *bf;
+
+  std::unordered_map<int, int> lengthsOfStrings;
 
 public:
   Signal(int numberOfStrings);
@@ -21,6 +25,10 @@ public:
   void add(const std::string newStr);
   void addParallel(const std::string newStr);
   void del(const std::string toBeRemoved);
+
+  bool isRegistered(const std::string str);
+
+  void printLengthsOfStringsInBloomFilter();
 };
 
 #endif /* SIGNAL_H */

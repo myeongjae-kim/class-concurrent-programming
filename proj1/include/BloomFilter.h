@@ -1,3 +1,6 @@
+#ifndef BLOOMFILTER_H
+#define BLOOMFILTER_H 
+
 #include <string>
 #include <cstdint>
 
@@ -33,6 +36,7 @@ private:
 
 };
 
+// TODO: add more Hash functions.
 uint64_t Hash1 (const std::string str);
 uint64_t Hash2 (const std::string str);
 uint64_t Hash3 (const std::string str);
@@ -44,3 +48,4 @@ uint64_t Hash8 (const std::string str);
 uint64_t Hash9 (const std::string str);
 uint64_t Hash10 (const std::string str);
 
+#endif /* BLOOMFILTER_H */
