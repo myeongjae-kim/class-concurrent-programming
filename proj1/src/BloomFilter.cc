@@ -6,9 +6,17 @@
 BloomFilter::BloomFilter (const uint64_t maxNumberOfElements, const double errProb) {
   this->maxNumberOfElements = maxNumberOfElements;
 
+  // prevent too small table
+  if (this->maxNumberOfElements < 1000) {
+    this->maxNumberOfElements = 1000;
+#ifdef DBG
+    std::cout << "(BloomFilter) Number of elements are too small. Set number of elements to "<< this->maxNumberOfElements << std::endl;
+#endif
+  }
+
   // Below expression is from http://hur.st/bloomfilter
-  filterSize = ceil((maxNumberOfElements * log(errProb)) / log(1.0 / (pow(2.0, log(2.0)))));
-  numberOfHashFunctions = round(log(2.0) * filterSize / maxNumberOfElements);
+  filterSize = ceil((this->maxNumberOfElements * log(errProb)) / log(1.0 / (pow(2.0, log(2.0)))));
+  numberOfHashFunctions = round(log(2.0) * filterSize / this->maxNumberOfElements);
 
   // TODO: remove below restriction
   // hash function should not be more than 10

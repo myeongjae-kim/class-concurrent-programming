@@ -13,7 +13,7 @@ LIB = ./lib/ -lpthread
 CPPFLAGS += -I$(INC)
 
 # Compile command.
-TARGET = a.out
+TARGET = run
 $(TARGET): $(OBJS)
 	$(CC) $(CXXFLAGS) $(CPPFLAGS) -o $(BIN)$(TARGET) $(OBJS) -L$(LIB)
 

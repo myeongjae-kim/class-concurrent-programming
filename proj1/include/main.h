@@ -1,5 +1,5 @@
 // Debugging Switcher
-#define DBG
+// #define DBG
 
 #define STR_MAX_LEN 4294967295 // 2^32 - 1
 

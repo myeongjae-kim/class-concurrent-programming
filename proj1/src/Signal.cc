@@ -43,6 +43,9 @@ std::string Signal::query(const std::string queryStr) {
       std::vector<Signal::AnswerWord>&& localResult = findExistSubstring(queryStr, i.first); // i.first is a substring length.
 
       for (auto word : localResult) {
+#ifdef DBG
+        std::cout << "(query) found string: " << word.foundString<< std::endl;
+#endif
         globalResult.push_back(word);
       }
     }
@@ -139,14 +142,25 @@ std::vector<Signal::AnswerWord> Signal::findExistSubstring(const std::string& qu
   std::unordered_set<std::string> foundedStrings;
   AnswerWord answerBuffer;
 
+
+
+
   // TODO: How can I parallelize below process?
-  while(queryLength <= startIdx + subStringLength) {
+  while(queryLength >= startIdx + subStringLength) {
     std::string&& subStr = query.substr(startIdx, subStringLength);
+#ifdef DBG
+        std::cout << "(findExistSubstring) subsStr: "<<subStr << std::endl;
+#endif
     if(bf->lookup(subStr)) {
       // answer is found
+#ifdef DBG
+        std::cout << "(findExistSubstring) "<<subStr<<" is exist in bloom filter." << std::endl;
+#endif
       if (foundedStrings.find(subStr) == foundedStrings.end()) {
         // answer is first found
+#ifdef DBG
         std::cout << "(findExistSubstring) first found!" << std::endl;
+#endif
 
         foundedStrings.insert(subStr);
 
