@@ -45,50 +45,38 @@ int main(void)
   // insert complete
   std::cout << 'R' << std::endl;
 
-  // get command
-  std::cin >> strBuffer;
 
   // To the end of stdin
-  while (strBuffer.length() != 0) {
-
-    switch (strBuffer[0]) {
+  char cmd;
+  while (std::cin >> cmd) {
+    std::cin.get();
+    
+    // get argument
+    getline(std::cin, strBuffer);
+    switch (cmd) {
       case 'Q':
-        // get argument
-        std::cin >> strBuffer;
-
 #ifdef DBG
         std::cout << "(main) call query" << std::endl;
 #endif
-
         std::cout << s.query(strBuffer) << std::endl;
         break;
       case 'A':
-        // get argument
-        std::cin >> strBuffer;
-
         s.add(strBuffer);
         break;
       case 'D':
-        // get argument
-        std::cin >> strBuffer;
-
         s.del(strBuffer);
         break;
 
-#ifdef DBG
       case 'R':
         // get argument
-        std::cin >> strBuffer;
-
         std::cout << strBuffer << " is ";
         if(s.isRegistered(strBuffer)) {
           std::cout << "registered." << std::endl;
         } else {
-          std::cout << "not registered." << std::endl;
+          std::cout << ANSI_COLOR_RED "not registered." ANSI_COLOR_RESET << std::endl;
         }
 
         break;
-#endif
 
       default:
         ERROR_MSG("(in switch) Default case is not exist.\n");
@@ -99,9 +87,6 @@ int main(void)
 #endif
     }
     strBuffer.clear();
-
-    // get next command
-    std::cin >> strBuffer;
   }
 
 #ifdef DBG
@@ -117,7 +102,7 @@ void TestBloomFilter() {
   std::cin >> n;
   std::string tempStr;
   std::getline(std::cin, tempStr);
-  double errProb = 0.01;
+  double errProb = 0.0001;
 
   BloomFilter bf(n, errProb);
 

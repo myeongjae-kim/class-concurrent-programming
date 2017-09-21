@@ -9,7 +9,7 @@ Signal::Signal(const int n) {
   setNumberOfStrings(n);
 
   try {
-    bf = new BloomFilter(n, 0.01);
+    bf = new BloomFilter(n, 0.001);
   }catch(std::bad_alloc& e) {
     std::cerr << "(BloomFilter creation) " << e.what() << '\n'; 
     exit(-1);
@@ -54,7 +54,25 @@ std::string Signal::query(const std::string queryStr) {
   // sort by pos
   std::sort(globalResult.begin(), globalResult.end(),
       [](Signal::AnswerWord word1, Signal::AnswerWord word2) {
-      return word1.pos < word2.pos;
+        if (word1.pos < word2.pos) {
+          return true;
+        } else if (word1.pos > word2.pos){
+          return false;
+        } else {
+        // same position
+        // compare the length
+
+#ifdef DBG
+          if(word1.foundString.length() == word2.foundString.length()) {
+            // same position and same length
+            // There is nocase like this
+            std::cout << ANSI_COLOR_RED "(sort) Fobidden case is occurred." ANSI_COLOR_RESET << std::endl;
+            exit(EXIT_FAILURE);
+          }
+#endif
+
+          return word1.foundString.length() < word2.foundString.length();
+        }
       });
 
   // concatenate results.
@@ -65,7 +83,11 @@ std::string Signal::query(const std::string queryStr) {
 
   // remove last '|'
   if (concatenated.length() != 0) {
-    *(--concatenated.end()) = '\0';
+    concatenated.pop_back();
+  }
+
+  if (concatenated.length() == 0) {
+    concatenated = "-1";
   }
 
   return concatenated;
@@ -149,12 +171,12 @@ std::vector<Signal::AnswerWord> Signal::findExistSubstring(const std::string& qu
   while(queryLength >= startIdx + subStringLength) {
     std::string&& subStr = query.substr(startIdx, subStringLength);
 #ifdef DBG
-        std::cout << "(findExistSubstring) subsStr: "<<subStr << std::endl;
+    std::cout << "(findExistSubstring) subsStr: "<<subStr << std::endl;
 #endif
     if(bf->lookup(subStr)) {
       // answer is found
 #ifdef DBG
-        std::cout << "(findExistSubstring) "<<subStr<<" is exist in bloom filter." << std::endl;
+      std::cout << "(findExistSubstring) "<<subStr<<" is exist in bloom filter." << std::endl;
 #endif
       if (foundedStrings.find(subStr) == foundedStrings.end()) {
         // answer is first found

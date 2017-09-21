@@ -18,6 +18,9 @@ BloomFilter::BloomFilter (const uint64_t maxNumberOfElements, const double errPr
   filterSize = ceil((this->maxNumberOfElements * log(errProb)) / log(1.0 / (pow(2.0, log(2.0)))));
   numberOfHashFunctions = round(log(2.0) * filterSize / this->maxNumberOfElements);
 
+  /* std::cout << "(BloomFilter) input: " << this->maxNumberOfElements << "filterSize: " << filterSize << "numberOfHashFunctions: " << numberOfHashFunctions << std::endl;
+   * std::cout << "(BloomFilter) errProb: " << errProb << std::endl; */
+
   // TODO: remove below restriction
   // hash function should not be more than 10
   numberOfHashFunctions = numberOfHashFunctions > 10 ? 10 : numberOfHashFunctions;
