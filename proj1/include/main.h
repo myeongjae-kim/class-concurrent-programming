@@ -1,6 +1,8 @@
 // Debugging Switcher
 // #define DBG
 
+#pragma once
+
 #define STR_MAX_LEN 4294967295 // 2^32 - 1
 
 #include <cstdio>

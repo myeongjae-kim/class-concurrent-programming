@@ -1,0 +1,3 @@
+cd /home/os/multicore_programming/proj1
+make
+~/ref_codes/marker/marker ~/ref_codes/small/small.init ~/ref_codes/small/small.work ~/ref_codes/small/small.result ./bin/run

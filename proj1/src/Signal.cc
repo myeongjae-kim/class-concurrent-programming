@@ -5,117 +5,83 @@
 
 #include <main.h>
 
-Signal::Signal(const int n) {
-  setNumberOfStrings(n);
+#include <boost/algorithm/searching/boyer_moore.hpp>
 
-  try {
-    bf = new BloomFilter(n, 0.001);
-  }catch(std::bad_alloc& e) {
-    std::cerr << "(BloomFilter creation) " << e.what() << '\n'; 
-    exit(-1);
-  }
+Signal::Signal(const int n) {
+  inputWords.reserve(n);
+  globalResult.reserve(1024);
 }
 
 Signal::~Signal() {
-  delete bf;
 }
 
-void Signal::setNumberOfStrings(const int n) {
-  numberOfStrings = n;
-}
-
-int Signal::getNumberOfStrings() {
-  return numberOfStrings;
-}
-
-//TODO: FIXIT. No result...
 std::string Signal::query(const std::string queryStr) {
-  std::vector<Signal::AnswerWord> globalResult;
+  Answer answerBuffer;
+  // every inputted word
+  for (auto &word : inputWords) {
+    auto searchResult = boost::algorithm::boyer_moore_search(queryStr.begin(), queryStr.end(),
+          word.begin(), word.end());
+    if (queryStr.end() != searchResult)
+    {
+      // found
+      answerBuffer.pos = (uint64_t*)&(*searchResult);
+      answerBuffer.foundString = word;
+      globalResult.push_back(answerBuffer);
 
-  // TODO: below should be parallelized.
-  for (auto &i : lengthsOfStrings) {
-    if (i.second != 0) { // i.second is a count.
-
-#ifdef DBG
-      std::cout << "(query) finding substring length : " << i.first << std::endl;
-#endif
-
-      std::vector<Signal::AnswerWord>&& localResult = findExistSubstring(queryStr, i.first); // i.first is a substring length.
-
-      for (auto word : localResult) {
-#ifdef DBG
-        std::cout << "(query) found string: " << word.foundString<< std::endl;
-#endif
-        globalResult.push_back(word);
-      }
+      //Buffer clear
+      answerBuffer.pos = nullptr;
+      answerBuffer.foundString.clear();
+    } else {
+      // Not Found
+      // Do Nothing
     }
   }
 
-  // sort by pos
   std::sort(globalResult.begin(), globalResult.end(),
-      [](Signal::AnswerWord word1, Signal::AnswerWord word2) {
-        if (word1.pos < word2.pos) {
+      [](Answer a1, Answer a2) {
+        if (a1.pos < a2.pos) {
           return true;
-        } else if (word1.pos > word2.pos){
+        } else if (a1.pos > a2.pos) {
           return false;
         } else {
-        // same position
-        // compare the length
-
-#ifdef DBG
-          if(word1.foundString.length() == word2.foundString.length()) {
-            // same position and same length
-            // There is nocase like this
-            std::cout << ANSI_COLOR_RED "(sort) Fobidden case is occurred." ANSI_COLOR_RESET << std::endl;
+          // when position is same,
+          // short string is front
+          if (a1.foundString.length() < a2.foundString.length()) {
+            return true;
+          //TODO: 디버깅 끝나면 이부분 비교하지 말기
+          } else if(a1.foundString.length() > a2.foundString.length()){
+            return false;
+          } else {
+            // There is no case of same length.
+            ERROR_MSG("(query) There is no case of same length.");
             exit(EXIT_FAILURE);
           }
-#endif
-
-          return word1.foundString.length() < word2.foundString.length();
         }
       });
 
-  // concatenate results.
-  std::string concatenated;
+  std::string rtValue("");
   for (auto &i : globalResult) {
-    concatenated += i.foundString + "|";
+    if (i.foundString.length() != 0) {
+      rtValue += i.foundString + "|";
+    }
   }
 
-  // remove last '|'
-  if (concatenated.length() != 0) {
-    concatenated.pop_back();
-  }
+  globalResult.clear();
 
-  if (concatenated.length() == 0) {
-    concatenated = "-1";
+  if (rtValue.length() == 0) {
+    // return "-1";
+    return "";
+  } else {
+    rtValue.pop_back();
+    return rtValue;
   }
-
-  return concatenated;
 }
 
-void Signal::add(const std::string newStr) {
+void Signal::add(const std::string &newWord) {
 #ifdef DBG
-  std::cout << "(add) " << newStr << std::endl;
+  std::cout << "(add) " << newWord << std::endl;
 #endif
-  if (bf->lookup(newStr)) {
-    // Do nothing. It is already exist
-  } else {
-    // insert
-    bf->insert(newStr);
-
-    // For finding substring in query,
-    // We should remember lengths of strings in the bloom filter.
-    uint32_t length = newStr.length();
-
-    if (lengthsOfStrings.find(length) == lengthsOfStrings.end()) {
-      // length is already exist
-      __sync_fetch_and_add(&lengthsOfStrings[length], 1);
-    } else {
-      // length is not exist
-      lengthsOfStrings[length] = 1;
-    }
-
-  }
+  inputWords.insert(newWord);
 }
 
 void Signal::addParallel(const std::string newStr) {
@@ -125,82 +91,15 @@ void Signal::addParallel(const std::string newStr) {
 }
 
 
-void Signal::del(const std::string toBeRemoved) {
+void Signal::del(const std::string &toBeRemoved) {
 #ifdef DBG
   std::cout << "(del) " << toBeRemoved << std::endl;
 #endif
+  inputWords.erase(toBeRemoved);
 
-  if (bf->lookup(toBeRemoved)) {
-    bf->remove(toBeRemoved);
-
-    // For finding substring in query,
-    // We should remember lengths of strings in the bloom filter.
-    __sync_fetch_and_sub(&lengthsOfStrings[toBeRemoved.length()], 1);
-  } else {
-    // Do nothing. It is not exist
-  }
 }
 
 
-bool Signal::isRegistered(const std::string str) {
-  return bf->lookup(str) ? true : false;
-}
-
-void Signal::printLengthsOfStringsInBloomFilter() {
-  for (auto i : lengthsOfStrings) {
-    printf("length:%d, count:%d\n", i.first, i.second);
-  }
-}
-
-
-//TODO: FIXIT
-std::vector<Signal::AnswerWord> Signal::findExistSubstring(const std::string& query, const uint32_t subStringLength) {
-  uint32_t queryLength = query.length();
-  uint32_t startIdx = 0;
-
-  std::vector<AnswerWord> result;
-  result.clear();
-
-  std::unordered_set<std::string> foundedStrings;
-  AnswerWord answerBuffer;
-
-
-
-
-  // TODO: How can I parallelize below process?
-  while(queryLength >= startIdx + subStringLength) {
-    std::string&& subStr = query.substr(startIdx, subStringLength);
-#ifdef DBG
-    std::cout << "(findExistSubstring) subsStr: "<<subStr << std::endl;
-#endif
-    if(bf->lookup(subStr)) {
-      // answer is found
-#ifdef DBG
-      std::cout << "(findExistSubstring) "<<subStr<<" is exist in bloom filter." << std::endl;
-#endif
-      if (foundedStrings.find(subStr) == foundedStrings.end()) {
-        // answer is first found
-#ifdef DBG
-        std::cout << "(findExistSubstring) first found!" << std::endl;
-#endif
-
-        foundedStrings.insert(subStr);
-
-        // insert to the result
-        answerBuffer.foundString = subStr;
-        answerBuffer.pos = startIdx;
-        result.push_back(answerBuffer);
-      } else {
-        // answer was already found
-        // do nothing
-      }
-    }
-
-    subStr.clear();
-    startIdx++;
-  }
-
-  // The result has no duplicated value and it has been sorted by position.
-
-  return result;
+bool Signal::isRegistered(const std::string &word) {
+  return inputWords.find(word) != inputWords.end();
 }
