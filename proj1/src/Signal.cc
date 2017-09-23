@@ -10,53 +10,78 @@
 Signal::Signal(const int n) {
   inputWords.reserve(n);
   globalResult.reserve(1024);
+
+  globalResultPointer = &globalResult;
 }
 
 Signal::~Signal() {
 }
 
+static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+
+void* searchSubstring(void* wordPointer) {
+  Answer answerBuffer;
+  std::string* word = (std::string*)wordPointer;
+
+  auto searchResult = boost::algorithm::boyer_moore_search(queryPointer->begin(), queryPointer->end(),
+      word->begin(), word->end());
+
+  if (queryPointer->end() != searchResult)
+  {
+    // found
+    answerBuffer.pos = (uint64_t*)&(*searchResult);
+    answerBuffer.foundString = *word;
+
+    //locking
+    pthread_mutex_lock(&mutex);
+    //TODO:use concurrent safe data structure to speed up
+    globalResultPointer->push_back(answerBuffer);
+    pthread_mutex_unlock(&mutex);
+  } else {
+    // Not Found
+    // Do Nothing
+  }
+  return nullptr;
+}
+
 std::string Signal::query(const std::string queryStr) {
   Answer answerBuffer;
-  // every inputted word
+  queryPointer = &queryStr;
+  
+  pthread_t *threads = (pthread_t*)malloc(inputWords.size() * sizeof(pthread_t));
+  int count = 0;
   for (auto &word : inputWords) {
-    auto searchResult = boost::algorithm::boyer_moore_search(queryStr.begin(), queryStr.end(),
-          word.begin(), word.end());
-    if (queryStr.end() != searchResult)
-    {
-      // found
-      answerBuffer.pos = (uint64_t*)&(*searchResult);
-      answerBuffer.foundString = word;
-      globalResult.push_back(answerBuffer);
-
-      //Buffer clear
-      answerBuffer.pos = nullptr;
-      answerBuffer.foundString.clear();
-    } else {
-      // Not Found
-      // Do Nothing
-    }
+    pthread_create(&threads[count++], NULL, searchSubstring, (void *)&word);
   }
+
+  // count is the number of threads
+  for (int i = 0; i < count; ++i) {
+    pthread_join(threads[i], NULL);
+  }
+
+  free(threads);
+  threads = nullptr;
 
   std::sort(globalResult.begin(), globalResult.end(),
       [](Answer a1, Answer a2) {
-        if (a1.pos < a2.pos) {
-          return true;
-        } else if (a1.pos > a2.pos) {
-          return false;
-        } else {
-          // when position is same,
-          // short string is front
-          if (a1.foundString.length() < a2.foundString.length()) {
-            return true;
-          //TODO: 디버깅 끝나면 이부분 비교하지 말기
-          } else if(a1.foundString.length() > a2.foundString.length()){
-            return false;
-          } else {
-            // There is no case of same length.
-            ERROR_MSG("(query) There is no case of same length.");
-            exit(EXIT_FAILURE);
-          }
-        }
+      if (a1.pos < a2.pos) {
+      return true;
+      } else if (a1.pos > a2.pos) {
+      return false;
+      } else {
+      // when position is same,
+      // short string is front
+      if (a1.foundString.length() < a2.foundString.length()) {
+      return true;
+      //TODO: 디버깅 끝나면 이부분 비교하지 말기
+      } else if(a1.foundString.length() > a2.foundString.length()){
+      return false;
+      } else {
+      // There is no case of same length.
+      ERROR_MSG("(query) There is no case of same length.");
+      exit(EXIT_FAILURE);
+      }
+      }
       });
 
   std::string rtValue("");
@@ -69,8 +94,7 @@ std::string Signal::query(const std::string queryStr) {
   globalResult.clear();
 
   if (rtValue.length() == 0) {
-    // return "-1";
-    return "";
+    return "-1";
   } else {
     rtValue.pop_back();
     return rtValue;
@@ -96,7 +120,6 @@ void Signal::del(const std::string &toBeRemoved) {
   std::cout << "(del) " << toBeRemoved << std::endl;
 #endif
   inputWords.erase(toBeRemoved);
-
 }
 
 
