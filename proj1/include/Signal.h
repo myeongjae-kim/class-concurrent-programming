@@ -22,9 +22,6 @@ typedef struct {
 }SearchInfo;
 
 
-std::vector<Answer>* globalResultPointer;
-const std::string* queryPointer;
-
 class Signal
 {
   public:

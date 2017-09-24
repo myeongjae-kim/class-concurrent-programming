@@ -7,6 +7,9 @@
 
 #include <boost/algorithm/searching/boyer_moore.hpp>
 
+std::vector<Answer>* globalResultPointer = nullptr;
+const std::string* queryPointer = nullptr;
+
 Signal::Signal(const int n) {
   inputWords.reserve(n);
   globalResult.reserve(1024);
@@ -19,18 +22,18 @@ Signal::~Signal() {
 
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
-void* searchSubstring(void* wordPointer) {
+void* searchSubstring(void* wordPointerArg) {
   Answer answerBuffer;
-  std::string* word = (std::string*)wordPointer;
+  std::string* wordPointer = (std::string*)wordPointerArg;
 
   auto searchResult = boost::algorithm::boyer_moore_search(queryPointer->begin(), queryPointer->end(),
-      word->begin(), word->end());
+      wordPointer->begin(), wordPointer->end());
 
   if (queryPointer->end() != searchResult)
   {
     // found
     answerBuffer.pos = (uint64_t*)&(*searchResult);
-    answerBuffer.foundString = *word;
+    answerBuffer.foundString = *wordPointer;
 
     //locking
     pthread_mutex_lock(&mutex);
