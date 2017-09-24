@@ -6,7 +6,8 @@ CXXFLAGS = -Wall -Wextra -Wpedantic -std=c++11 -O3
 # Macros specifying path for compile.
 SRCS := $(wildcard src/*.cc)
 OBJS := $(SRCS:.cc=.o)
-BIN = ./bin/
+# BIN = ./bin/
+BIN = ./
 INC = ./include/
 LIB = ./lib/ -lpthread
 
