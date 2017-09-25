@@ -4,11 +4,12 @@
 #include <cstdlib>
 #include <cassert>
 #include <string>
-
 #include <vector>
-#include <boost/algorithm/searching/boyer_moore.hpp>
-
 #include <set>
+#include <unordered_set>
+#include <pthread.h>
+
+#include <boost/algorithm/searching/boyer_moore.hpp>
 
 #define RESERVED_CAPACITY 1024
 
