@@ -1,28 +1,52 @@
-// put every code into main for performance.
+/** 
+ * Author               : Kim, Myeong Jae
+ * File Name            : main.cc
+ * Due date             : 2017-09-30
+ * Compilation Standard : c11
+ **/
+
+#include <iostream>
+#include <cstdlib>
+#include <cassert>
+#include <string>
 
 #include <main.h>
+#include <Signal.h>
 
-// global variables
-std::set<BMString> patterns;
+#include <vector>
+
+#define RESERVED_CAPACITY 1024
+
 
 int main(void)
 {
   std::ios::sync_with_stdio(false);
-
+  
   int numberOfStrings = 0;
   std::cin >> numberOfStrings;
+
+  Signal s(numberOfStrings);
 
   // reserve capacity for performance
   std::string strBuffer;
   strBuffer.reserve(RESERVED_CAPACITY);
 
   for (int i = 0; i < numberOfStrings; ++i) {
+    // TODO: Parallelizing or not. Which one is fast?
     std::cin >> strBuffer;
-    patterns.insert(*(new BMString(strBuffer)));
+    s.add(strBuffer);
+    strBuffer.clear();
   }
 
   // insert complete
   std::cout << 'R' << std::endl;
+
+  /* int counter = 1;
+   * for (auto i : s.inputWords) {
+   *   std::cout << counter << " : "<< i << std::endl;
+   *   counter++;
+   * }
+   * exit(0); */
 
 
   // To the end of stdin
@@ -37,35 +61,40 @@ int main(void)
 #ifdef DBG
         std::cout << "(main) call query" << std::endl;
 #endif
-        std::cout << query(strBuffer) << std::endl;
+        std::cout << s.query(strBuffer) << std::endl;
         break;
       case 'A':
-        patterns.insert(*(new BMString(strBuffer)));
+        s.add(strBuffer);
         break;
       case 'D':
-        patterns.erase(strBuffer);
+        s.del(strBuffer);
         break;
 
       case 'R':
         // get argument
         std::cout << strBuffer << " is ";
-        if(patterns.find(strBuffer) != patterns.end()) {
+        if(s.isRegistered(strBuffer)) {
           std::cout << "registered." << std::endl;
         } else {
-          std::cout << "not registered."  << std::endl;
+          std::cout << ANSI_COLOR_RED "not registered." ANSI_COLOR_RESET << std::endl;
         }
 
         break;
 
       default:
-        std::cout << "(in switch) Default case is not exist.\n" << std::endl;
+        ERROR_MSG("(in switch) Default case is not exist.\n");
 #ifdef DBG
         assert(false);
 #else
         return -1;
 #endif
     }
+    strBuffer.clear();
   }
+
+#ifdef DBG
+  s.printLengthsOfStringsInBloomFilter();
+#endif
 
   return 0;
 }
