@@ -9,7 +9,7 @@
 #include <unordered_set>
 #include <pthread.h>
 
-#include <boost/algorithm/searching/boyer_moore.hpp>
+#include <boost/algorithm/searching/boyer_moore_horspool.hpp>
 
 #define RESERVED_CAPACITY 1024
 
@@ -24,7 +24,7 @@ class BMString : public std::string {
       : std::string(str), search(this->begin(), this->end()) {
 
       }
-    boyer_moore<std::string::const_iterator> search;
+    boyer_moore_horspool<std::string::const_iterator> search;
 
     ~BMString() {
     }
