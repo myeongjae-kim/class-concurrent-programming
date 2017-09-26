@@ -15,12 +15,13 @@ static std::vector<Answer> resultVector;
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
 void* searchSubstr(void* BMStringPtrArg) {
-  const BMString* BMStringPtr = (const BMString*) BMStringPtrArg;
+  BMString* BMStringPtr = (BMString*) BMStringPtrArg;
   Answer foundAnswer;
 
-  auto searchResult = BMStringPtr->search(queryPtr->begin(), queryPtr->end());
+  // auto searchResult = BMStringPtr->search(queryPtr->begin(), queryPtr->end());
+  char* searchResult = BMStringPtr->BMH(*queryPtr);
 
-  if (searchResult != queryPtr->end()) {
+  if (searchResult != nullptr) {
     foundAnswer.BMStringPtr = BMStringPtr;
     foundAnswer.pos = &(*searchResult);
 

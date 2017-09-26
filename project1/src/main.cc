@@ -2,6 +2,50 @@
 
 #include <main.h>
 
+
+BMString::BMString(const std::string& pat)
+  : std::string(pat), search(this->begin(), this->end()) {
+    patLength = pat.length();
+
+    // initialize bad match table
+    for (long i = 0; i < ALPHA_NUM; ++i) {
+      badMatchTable[i] = patLength;
+    }
+
+
+    // make bad match table
+    for (long i = 0; i < patLength; ++i) {
+      long jump = patLength - i - 1;
+      if (jump == 0) {
+        jump++;
+      }
+      badMatchTable[(uint8_t)pat[i]] = jump;
+    }
+
+  }
+
+char* BMString::BMH(const std::string& qry) {
+  long qryLength = qry.length();
+  long i = patLength - 1;
+  char last = (*this)[i];
+
+  char qryChar;
+  long firstCharIdx;
+  while (i < qryLength) {
+    qryChar = qry[i];
+    if (qryChar == last) {
+      firstCharIdx = i - patLength + 1; 
+      if (qry.substr(firstCharIdx, patLength) == *this) {
+        return (char*)firstCharIdx;
+      }
+    }
+    i += badMatchTable[(uint8_t)qryChar];
+  }
+
+  return nullptr;
+}
+
+
 // global variables
 std::set<BMString> patterns;
 
@@ -29,7 +73,7 @@ int main(void)
   char cmd;
   while (std::cin >> cmd) {
     std::cin.get();
-    
+
     // get argument
     getline(std::cin, strBuffer);
     switch (cmd) {
