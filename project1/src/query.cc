@@ -117,7 +117,7 @@ std::string query(const std::string& query) {
       // and wait to the end
       for (long i = 0; i < NUM_THREAD; ++i) {
         while (qry_thread_arg[i] != nullptr) {
-          // pthread_yield();
+          pthread_yield();
         }
       }
     }
@@ -132,7 +132,7 @@ std::string query(const std::string& query) {
     // and wait to the end
     for (long i = 0; i < NUM_THREAD; ++i) {
       while (qry_thread_arg[i] != nullptr) {
-        // pthread_yield();
+        pthread_yield();
       }
     }
   }
