@@ -1,3 +1,5 @@
 cd /home/os/multicore_programming/project1
 make
 ~/ref_codes/marker/marker ~/ref_codes/small/small.init ~/ref_codes/small/small.work ~/ref_codes/small/small.result ./run
+
+# sudo perf record -g ~/ref_codes/marker/marker ~/ref_codes/small/small.init ~/ref_codes/small/small.work ~/ref_codes/small/small.result ./run
