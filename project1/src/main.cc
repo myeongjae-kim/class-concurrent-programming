@@ -31,6 +31,8 @@ char* BMString::BMH(const std::string& qry) {
 
   char qryChar;
   long firstCharIdx;
+
+
   while (i < qryLength) {
     qryChar = qry[i];
     if (qryChar == last) {
@@ -42,7 +44,7 @@ char* BMString::BMH(const std::string& qry) {
     i += badMatchTable[(uint8_t)qryChar];
   }
 
-  return nullptr;
+  return (char*)0xFFFFFFFFFFFFFFFF;
 }
 
 

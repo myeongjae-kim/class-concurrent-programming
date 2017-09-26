@@ -21,7 +21,7 @@ void* searchSubstr(void* BMStringPtrArg) {
   // auto searchResult = BMStringPtr->search(queryPtr->begin(), queryPtr->end());
   char* searchResult = BMStringPtr->BMH(*queryPtr);
 
-  if (searchResult != nullptr) {
+  if (searchResult != (char*)0xFFFFFFFFFFFFFFFF) {
     foundAnswer.BMStringPtr = BMStringPtr;
     foundAnswer.pos = &(*searchResult);
 
