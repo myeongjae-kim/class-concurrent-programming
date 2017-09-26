@@ -12,112 +12,55 @@ typedef struct {
 static const std::string* queryPtr = nullptr;
 static std::vector<Answer> resultVector;
 
-static pthread_mutex_t result_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 
-// for make threads sleep and wakeup
-BMString* qry_thread_arg[NUM_THREAD];
+void* searchSubstr(void* BMStringPtrArg) {
+  const BMString* BMStringPtr = (const BMString*) BMStringPtrArg;
+  Answer foundAnswer;
 
-bool finished = 0;
+  auto searchResult = BMStringPtr->search(queryPtr->begin(), queryPtr->end());
 
-pthread_cond_t qry_cond;
-pthread_mutex_t qry_mutex = PTHREAD_MUTEX_INITIALIZER;
+  if (searchResult != queryPtr->end()) {
+    foundAnswer.BMStringPtr = BMStringPtr;
+    foundAnswer.pos = &(*searchResult);
 
-
-void* condSearchSubstr(void* arg) {
-  long tid = (long)arg;
-
-  // init
-  qry_thread_arg[tid] = nullptr;
-
-  // wait
-  pthread_mutex_lock(&qry_mutex);
-
-#ifdef DBG
-  std::cout << "(thread " << tid << ") is go to sleep" << std::endl;
-#endif
-
-
-  pthread_cond_wait(&qry_cond, &qry_mutex);
-  pthread_mutex_unlock(&qry_mutex);
-
-#ifdef DBG
-  std::cout << "(thread " << tid << ") is waken up" << std::endl;
-#endif
-
-  while (!finished) {
-    // do work
-    if (qry_thread_arg[tid] != nullptr) {
-      Answer foundAnswer;
-
-      auto searchResult = qry_thread_arg[tid]->search(queryPtr->begin(), queryPtr->end());
-
-      if (searchResult != queryPtr->end()) {
-        foundAnswer.BMStringPtr = qry_thread_arg[tid];
-        foundAnswer.pos = &(*searchResult);
-
-        pthread_mutex_lock(&result_mutex);
-        resultVector.push_back(foundAnswer);
-        pthread_mutex_unlock(&result_mutex);
-      }
-    }
-
-
-    pthread_mutex_lock(&qry_mutex);
-    //reinit
-    qry_thread_arg[tid] = nullptr;
-
-    // send result
-    pthread_cond_wait(&qry_cond, &qry_mutex);
-    pthread_mutex_unlock(&qry_mutex);
+    pthread_mutex_lock(&mutex);
+    resultVector.push_back(foundAnswer);
+    pthread_mutex_unlock(&mutex);
   }
 
   return nullptr;
 }
 
-// end
-
-
-
-
 std::string query(const std::string& query) {
   queryPtr = &query;
 
-  int tid = 0;
+  //sequential
+/*   for (auto &pat : patterns) {
+ *     auto searchResult = pat.search(queryPtr->begin(), queryPtr->end());
+ *     if (searchResult != queryPtr->end()) {
+ *       Answer foundAnswer;
+ *
+ *       foundAnswer.BMStringPtr = &pat;
+ *       foundAnswer.pos = &(*searchResult);
+ *
+ *       resultVector.push_back(foundAnswer);
+ *     }
+ *   } */
+
+
+  pthread_t *threads = (pthread_t*)malloc(patterns.size() * sizeof(pthread_t));
+  int count = 0;
   for (auto &pat : patterns) {
-    qry_thread_arg[tid] = (BMString*)&pat;
-    tid++;
-    tid %= NUM_THREAD;
-
-    // full of argument
-    if (tid == 0) {
-
-      // thread wake up
-      pthread_mutex_lock(&qry_mutex);
-      pthread_cond_broadcast(&qry_cond);
-      pthread_mutex_unlock(&qry_mutex);
-
-      // and wait to the end
-      for (long i = 0; i < NUM_THREAD; ++i) {
-        while (qry_thread_arg[i] != nullptr) {
-          pthread_yield();
-        }
-      }
-    }
+    pthread_create(&threads[count++], NULL, searchSubstr, (void*)&pat);
   }
 
-  if (tid != 0) {
-    // wake up left threads
-    pthread_mutex_lock(&qry_mutex);
-    pthread_cond_broadcast(&qry_cond);
-    pthread_mutex_unlock(&qry_mutex);
-
-    // and wait to the end
-    for (long i = 0; i < NUM_THREAD; ++i) {
-      while (qry_thread_arg[i] != nullptr) {
-        pthread_yield();
-      }
-    }
+  // count is the number of threads
+  for (int i = 0; i < count; ++i) {
+    pthread_join(threads[i], NULL);
   }
+  free(threads);
+  threads = nullptr;
 
 
   // sort

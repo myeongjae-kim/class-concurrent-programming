@@ -13,7 +13,6 @@
 
 #define RESERVED_CAPACITY 1024
 
-#define NUM_THREAD 80
 // #define DBG
 
 using namespace boost::algorithm;
@@ -21,7 +20,7 @@ using namespace boost::algorithm;
 // class definition
 class BMString : public std::string {
   public:
-    BMString(const std::string& str)
+    BMString(const std::string str)
       : std::string(str), search(this->begin(), this->end()) {
 
       }
@@ -33,5 +32,3 @@ class BMString : public std::string {
 
 
 std::string query(const std::string& query);
-
-void* condSearchSubstr(void* arg);
