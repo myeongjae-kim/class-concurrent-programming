@@ -13,7 +13,7 @@
 
 #define RESERVED_CAPACITY 1024
 
-#define NUM_THREAD 36
+#define NUM_THREAD 80
 // #define DBG
 
 using namespace boost::algorithm;
