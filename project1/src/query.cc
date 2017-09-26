@@ -80,9 +80,9 @@ void* condSearchSubstr(void* arg) {
     }
 
 
+    pthread_mutex_lock(&qry_mutex);
     //reinit
     qry_thread_arg[tid] = nullptr;
-    pthread_mutex_lock(&qry_mutex);
 
     // send result
     pthread_cond_wait(&qry_cond, &qry_mutex);
