@@ -8,6 +8,7 @@
 #include "SuffixTrie.h"
 
 
+#include <cstdint>
 #include <iostream>
 
 int main(int argc, char* argv[])
@@ -22,10 +23,11 @@ int main(int argc, char* argv[])
 	CSuffixTrie::DataFoundVector aDataFound;
 	aDataFound=aTree.SearchAhoCorasikMultiple(L"1236h6h6barakoo6arakoo123");
 
-	for (int iCount=0;
+	for (uint64_t iCount=0;
 		 iCount<aDataFound.size();
-		 ++iCount)
+		 ++iCount) {
 		printf("%S %i\n",aDataFound[iCount].sDataFound.c_str(),aDataFound[iCount].iFoundPosition);
+  }
 
 
 	return 0;

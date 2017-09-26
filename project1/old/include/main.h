@@ -1,29 +1,34 @@
-// Debugging Switcher
-// #define DBG
-
 #pragma once
 
-#define STR_MAX_LEN 4294967295 // 2^32 - 1
+#include <iostream>
+#include <cstdlib>
+#include <cassert>
+#include <string>
+#include <vector>
+#include <set>
+#include <unordered_set>
+#include <pthread.h>
 
-#include <cstdio>
+#include <boost/algorithm/searching/boyer_moore_horspool.hpp>
+
+#define RESERVED_CAPACITY 1024
+
+// #define DBG
+
+using namespace boost::algorithm;
+
+// class definition
+class BMString : public std::string {
+  public:
+    BMString(const std::string str)
+      : std::string(str), search(this->begin(), this->end()) {
+
+      }
+    boyer_moore_horspool<std::string::const_iterator> search;
+
+    ~BMString() {
+    }
+};
 
 
-
-
-
-
-
-
-
-
-
-#define ANSI_COLOR_RED      "\x1b[31m"
-#define ANSI_COLOR_GREEN    "\x1b[32m"
-#define ANSI_COLOR_YELLOW   "\x1b[33m"
-#define ANSI_COLOR_BLUE     "\x1b[34m"
-#define ANSI_COLOR_MAGENTA  "\x1b[35m"
-#define ANSI_COLOR_CYAN     "\x1b[36m"
-#define ANSI_COLOR_RESET    "\x1b[0m"
-
-#define ERROR_MSG( msg ) \
-    fprintf( stderr, ANSI_COLOR_RED "\tERROR: " ANSI_COLOR_YELLOW"%s" ANSI_COLOR_RESET, ( msg ) )
+std::string query(const std::string& query);
