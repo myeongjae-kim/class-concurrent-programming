@@ -2,16 +2,14 @@
 
 #include <main.h>
 
-
 BMString::BMString(const std::string& pat)
-  : std::string(pat), search(this->begin(), this->end()) {
+  : std::string(pat) {
     patLength = pat.length();
 
     // initialize bad match table
     for (long i = 0; i < ALPHA_NUM; ++i) {
       badMatchTable[i] = patLength;
     }
-
 
     // make bad match table
     for (long i = 0; i < patLength; ++i) {
@@ -90,17 +88,6 @@ int main(void)
         break;
       case 'D':
         patterns.erase(strBuffer);
-        break;
-
-      case 'R':
-        // get argument
-        std::cout << strBuffer << " is ";
-        if(patterns.find(strBuffer) != patterns.end()) {
-          std::cout << "registered." << std::endl;
-        } else {
-          std::cout << "not registered."  << std::endl;
-        }
-
         break;
 
       default:
