@@ -16,78 +16,78 @@ extern pthread_mutex_t qry_mutex;
 
 int main(void)
 {
-  std::ios::sync_with_stdio(false);
+	std::ios::sync_with_stdio(false);
 
-  int numberOfStrings = 0;
-  std::cin >> numberOfStrings;
+	int numberOfStrings = 0;
+	std::cin >> numberOfStrings;
 
-  // reserve capacity for performance
-  std::string strBuffer;
-  strBuffer.reserve(RESERVED_CAPACITY);
+	// reserve capacity for performance
+	std::string strBuffer;
+	strBuffer.reserve(RESERVED_CAPACITY);
 
-  for (int i = 0; i < numberOfStrings; ++i) {
-    std::cin >> strBuffer;
-    patterns.insert(*(new BMString(strBuffer)));
-  }
+	for (int i = 0; i < numberOfStrings; ++i) {
+		std::cin >> strBuffer;
+		patterns.insert(*(new BMString(strBuffer)));
+	}
 
-  // insert complete
-  std::cout << 'R' << std::endl;
+	// insert complete
+	std::cout << 'R' << std::endl;
 
-  // create thread
-  pthread_t qry_thread[NUM_THREAD];
-  pthread_cond_init(&qry_cond, 0);
+	// create thread
+	pthread_t qry_thread[NUM_THREAD];
+	pthread_cond_init(&qry_cond, 0);
 
-  for (long i = 0; i < NUM_THREAD; ++i) {
-    if (pthread_create(&qry_thread[i], 0, condSearchSubstr, (void*)i)) {
-      printf("pthread_create error!\n");
-      return 0;
-    }
-  }
+	for (long i = 0; i < NUM_THREAD; ++i) {
+		if (pthread_create(&qry_thread[i], 0, condSearchSubstr, (void*)i)) {
+			printf("pthread_create error!\n");
+			return 0;
+		}
+	}
 
 
 
-  // To the end of stdin
-  char cmd;
-  while (std::cin >> cmd) {
-    std::cin.get();
+	// To the end of stdin
+	char cmd;
+	while (std::cin >> cmd) {
+		std::cin.get();
 
-    // get argument
-    getline(std::cin, strBuffer);
-    switch (cmd) {
-      case 'Q':
+		// get argument
+		getline(std::cin, strBuffer);
+		switch (cmd) {
+			case 'Q':
 #ifdef DBG
-        std::cout << "(main) call query" << std::endl;
+				std::cout << "(main) call query" << std::endl;
 #endif
-        std::cout << query(strBuffer) << std::endl;
-        break;
-      case 'A':
-        patterns.insert(*(new BMString(strBuffer)));
-        break;
-      case 'D':
-        patterns.erase(strBuffer);
-        break;
+				std::cout << query(strBuffer) << std::endl;
+				break;
+			case 'A':
+				patterns.insert(*(new BMString(strBuffer)));
+				break;
+			case 'D':
+				patterns.erase(strBuffer);
+				break;
 
-      default:
-        std::cout << "(in switch) Default case is not exist.\n" << std::endl;
+			default:
+				std::cout << "(in switch) Default case is not exist.\n" << std::endl;
 #ifdef DBG
-        assert(false);
+				assert(false);
 #else
-        return -1;
+				return -1;
 #endif
-    }
-  }
+		}
+	}
 
-  // erase thread
-  finished = 1;
-  pthread_mutex_lock(&qry_mutex);
-  pthread_cond_broadcast(&qry_cond);
-  pthread_mutex_unlock(&qry_mutex);
+	// erase thread
+	finished = 1;
+	pthread_mutex_lock(&qry_mutex);
+	pthread_cond_broadcast(&qry_cond);
+	pthread_mutex_unlock(&qry_mutex);
 
-  for (int i = 0; i < NUM_THREAD; i++) {
-    pthread_join(qry_thread[i], NULL);
-  }
+	for (int i = 0; i < NUM_THREAD; i++) {
+		pthread_join(qry_thread[i], NULL);
+	}
 
 
 
-  return 0;
+	return 0;
 }
