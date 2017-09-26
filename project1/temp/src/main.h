@@ -3,32 +3,31 @@
 #include <iostream>
 #include <cstdlib>
 #include <cassert>
+#include <cstdint>
 #include <string>
 #include <vector>
 #include <set>
-#include <unordered_set>
+#include <algorithm>
 #include <pthread.h>
 
-#include <boost/algorithm/searching/boyer_moore_horspool.hpp>
-
 #define RESERVED_CAPACITY 1024
+#define ALPHA_NUM 256
 
 #define NUM_THREAD 48
 // #define DBG
 
-using namespace boost::algorithm;
-
 // class definition
 class BMString : public std::string {
   public:
-    BMString(const std::string str)
-      : std::string(str), search(this->begin(), this->end()) {
-
-      }
-    boyer_moore_horspool<std::string::const_iterator> search;
+    BMString(const std::string& str);
 
     ~BMString() {
     }
+
+    uint8_t badMatchTable[ALPHA_NUM];
+    long patLength;
+
+    char* BMH(const std::string& query);
 };
 
 

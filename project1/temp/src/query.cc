@@ -15,12 +15,13 @@ static std::vector<Answer> resultVector;
 static pthread_mutex_t result_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 void* searchSubstr(void* BMStringPtrArg) {
-  const BMString* BMStringPtr = (const BMString*) BMStringPtrArg;
+  BMString* BMStringPtr = (BMString*) BMStringPtrArg;
   Answer foundAnswer;
 
-  auto searchResult = BMStringPtr->search(queryPtr->begin(), queryPtr->end());
+  // auto searchResult = BMStringPtr->search(queryPtr->begin(), queryPtr->end());
+  char* searchResult = BMStringPtr->BMH(*queryPtr);
 
-  if (searchResult != queryPtr->end()) {
+  if (searchResult != (char*)0xFFFFFFFFFFFFFFFF) {
     foundAnswer.BMStringPtr = BMStringPtr;
     foundAnswer.pos = &(*searchResult);
 
@@ -67,9 +68,9 @@ void* condSearchSubstr(void* arg) {
     if (qry_thread_arg[tid] != nullptr) {
       Answer foundAnswer;
 
-      auto searchResult = qry_thread_arg[tid]->search(queryPtr->begin(), queryPtr->end());
+      char* searchResult = qry_thread_arg[tid]->BMH(*queryPtr);
 
-      if (searchResult != queryPtr->end()) {
+      if (searchResult != (char*)0xFFFFFFFFFFFFFFFF) {
         foundAnswer.BMStringPtr = qry_thread_arg[tid];
         foundAnswer.pos = &(*searchResult);
 
@@ -95,10 +96,23 @@ void* condSearchSubstr(void* arg) {
 // end
 
 
-
-
 std::string query(const std::string& query) {
   queryPtr = &query;
+
+  //sequential
+/*   pthread_t *threads = (pthread_t*)malloc(patterns.size() * sizeof(pthread_t));
+ *   int count = 0;
+ *   for (auto &pat : patterns) {
+ *     pthread_create(&threads[count++], NULL, searchSubstr, (void*)&pat);
+ *   }
+ *
+ *   // count is the number of threads
+ *   for (int i = 0; i < count; ++i) {
+ *     pthread_join(threads[i], NULL);
+ *   }
+ *   free(threads);
+ *   threads = nullptr; */
+
 
   int tid = 0;
   for (auto &pat : patterns) {
@@ -136,6 +150,7 @@ std::string query(const std::string& query) {
       }
     }
   }
+
 
 
   // sort
