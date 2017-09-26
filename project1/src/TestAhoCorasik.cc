@@ -2,33 +2,25 @@
 //
 
 #include "StdAfx.h"
-
-#include <stdio.h>
-
 #include "SuffixTrie.h"
 
-
-#include <cstdint>
+#include <stdio.h>
 #include <iostream>
+#include <cstdint>
 
-int main(int argc, char* argv[])
-{
+void TestAhoCoarsik(void){
 	CSuffixTrie aTree;
-	aTree.AddString(L"barak");
-	aTree.AddString(L"arakoo");
-	aTree.AddString(L"barakoo");
-	aTree.AddString(L"barako565");
+	aTree.AddString("barak");
+	aTree.AddString("arakoo");
+	aTree.AddString("barakoo");
+	aTree.AddString("barako565");
 	
 	aTree.BuildTreeIndex();
 	CSuffixTrie::DataFoundVector aDataFound;
-	aDataFound=aTree.SearchAhoCorasikMultiple(L"1236h6h6barakoo6arakoo123");
+	aDataFound=aTree.SearchAhoCorasikMultiple("1236h6h6barakoo6arakoo123");
 
 	for (uint64_t iCount=0;
 		 iCount<aDataFound.size();
-		 ++iCount) {
-		printf("%S %i\n",aDataFound[iCount].sDataFound.c_str(),aDataFound[iCount].iFoundPosition);
-  }
-
-
-	return 0;
+		 ++iCount)
+		printf("%s %i\n",aDataFound[iCount].sDataFound.c_str(),aDataFound[iCount].iFoundPosition);
 }

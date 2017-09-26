@@ -1,5 +1,6 @@
 #include "StdAfx.h"
 #include "SuffixTrie.h"
+
 #include <cstdint>
 
 CSuffixTrie::CSuffixTrie()
@@ -137,7 +138,7 @@ void CSuffixTrie::DeleteNode(Node* pNode)const
 void CSuffixTrie::BuildTreeIndex()
 {
 	//Build index on the root
-	BuildIndex(L"",
+	BuildIndex("",
 			   &m_aRoot);
 }
 
@@ -296,7 +297,7 @@ CSuffixTrie::DataFound CSuffixTrie::SearchAhoCorasik(const SearchString& rString
 					pNode=&m_aRoot;
 
 					//Reset search string
-					sMatchedString=L"";
+					sMatchedString="";
 
 					//Did we do a switch?
 					if (bSwitch)
@@ -387,7 +388,7 @@ CSuffixTrie::DataFoundVector CSuffixTrie::SearchAhoCorasikMultiple(const SearchS
 					pNode=&m_aRoot;
 
 					//Reset search string
-					sMatchedString=L"";
+					sMatchedString="";
 
 					//Did we do a switch?
 					if (bSwitch)
@@ -440,7 +441,7 @@ CSuffixTrie::DataFoundVector CSuffixTrie::SearchAhoCorasikMultiple(const SearchS
 			iCount-=sMatchedString.length()-1;
 
 			//Reset the data
-			sMatchedString=L"";
+			sMatchedString="";
 		}
 	}
 
@@ -496,7 +497,7 @@ CSuffixTrie::StringsVector CSuffixTrie::GetAllStringsVector()const
 
 	//Start to build the trie
 	BuildStrings(aVector,
-				 L"",
+				 "",
 				 &m_aRoot);
 
 	//Done
@@ -570,34 +571,36 @@ void CSuffixTrie::DeleteString(const SearchString& rString)
 			
 			//And delete the node
 			delete pPrevNode;
-      pPrevNode=NULL;
-    }
+			pPrevNode=NULL;
+		}
 
-    //Did we get it?
-    if (pNode){
-      //What stage are we?
-      if (!iCount) {
-        //Does it have children?
-        if (pNode->aMap.empty()) {
-          //We can delete it
-          pPrevNode=pNode;
-        } else {
-          //Can't be final
-          pNode->bFinal=false;
-
-          //Exit
-          return;
+		//Did we get it?
+		if (pNode){
+			//What stage are we?
+			if (!iCount){
+				//Does it have children?
+				if (pNode->aMap.empty()){
+					//We can delete it
+					pPrevNode=pNode;
         }
+				else
+				{
+					//Can't be final
+					pNode->bFinal=false;
+
+					//Exit
+					return;
+				}
       }
-      //Do we have children
-      else if (pNode->aMap.empty()) {
-        //We can delete it
-        pPrevNode=pNode;
+			//Do we have children
+			else if (pNode->aMap.empty()){
+				//We can delete it
+				pPrevNode=pNode;
       } else{
-        //Exit
-        return;
+				//Exit
+				return;
       }
     }
-  }
+	}
 }
-
+				

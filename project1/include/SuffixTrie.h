@@ -40,7 +40,7 @@
 #pragma once
 #endif // _MSC_VER > 1000
 
-#pragma warning(disable:4786)
+// #pragma warning(disable:4786)
 
 #include <map>
 #include <string>
@@ -51,7 +51,7 @@ class CSuffixTrie
 {
 public:
 	//Our string type
-	typedef std::wstring SearchString;
+	typedef std::string SearchString;
 
 	//Data returned from our search
 	typedef struct _DataFound
@@ -107,7 +107,7 @@ public:
 	virtual ~CSuffixTrie();
 private:
 	//Our char search type
-	typedef wchar_t SearchChar;
+	typedef char SearchChar;
 
 	//Forward declare the node
 	struct _Node;
