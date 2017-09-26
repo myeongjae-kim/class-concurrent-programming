@@ -49,6 +49,7 @@ char* BMString::BMH(const std::string& qry) {
 // global variables
 std::set<BMString> patterns;
 
+
 // thread info
 extern BMString* qry_thread_arg[NUM_THREAD];
 
@@ -88,8 +89,6 @@ int main(void)
     }
   }
 
-
-
   // To the end of stdin
   char cmd;
   while (std::cin >> cmd) {
@@ -99,9 +98,6 @@ int main(void)
     getline(std::cin, strBuffer);
     switch (cmd) {
       case 'Q':
-#ifdef DBG
-        std::cout << "(main) call query" << std::endl;
-#endif
         std::cout << query(strBuffer) << std::endl;
         break;
       case 'A':
@@ -121,6 +117,7 @@ int main(void)
     }
   }
 
+
   // erase thread
   finished = 1;
   pthread_mutex_lock(&qry_mutex);
@@ -130,8 +127,6 @@ int main(void)
   for (int i = 0; i < NUM_THREAD; i++) {
     pthread_join(qry_thread[i], NULL);
   }
-
-
 
   return 0;
 }
