@@ -14,25 +14,6 @@ static std::vector<Answer> resultVector;
 
 static pthread_mutex_t result_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-void* searchSubstr(void* BMStringPtrArg) {
-  BMString* BMStringPtr = (BMString*) BMStringPtrArg;
-  Answer foundAnswer;
-
-  // auto searchResult = BMStringPtr->search(queryPtr->begin(), queryPtr->end());
-  char* searchResult = BMStringPtr->BMH(*queryPtr);
-
-  if (searchResult != (char*)0xFFFFFFFFFFFFFFFF) {
-    foundAnswer.BMStringPtr = BMStringPtr;
-    foundAnswer.pos = &(*searchResult);
-
-    pthread_mutex_lock(&result_mutex);
-    resultVector.push_back(foundAnswer);
-    pthread_mutex_unlock(&result_mutex);
-  }
-
-  return nullptr;
-}
-
 // for make threads sleep and wakeup
 BMString* qry_thread_arg[NUM_THREAD];
 
