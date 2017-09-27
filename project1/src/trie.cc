@@ -8,7 +8,7 @@
 #include <unordered_set>
 
 
-uint32_t stringID = 1;
+uint32_t patternID = 1;
 
 std::unordered_set <uint32_t> printed;
 
@@ -44,7 +44,7 @@ void insert(struct Trie* *head, char* str)
 
 	// mark current node as leaf
 	// curr->isLeaf = 1;
-	curr->isLeaf = stringID++;
+	curr->isLeaf = patternID++;
 }
 
 // Iterative function to search a string in Trie. It returns 1
