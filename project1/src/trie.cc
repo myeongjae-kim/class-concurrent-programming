@@ -1,3 +1,5 @@
+//base source code: http://www.techiedelight.com/trie-implementation-insert-search-delete/
+
 #include <cstdio>
 #include <cstdlib>
 #include <cstdint>
