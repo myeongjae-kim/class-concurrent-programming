@@ -1,19 +1,15 @@
+#include <stdio.h>
+#include "trie.h"
+
 #include <iostream>
-#include <cstdio>
-#include <cstdint>
 
-#include "main.h"
-#include "StdAfx.h"
-#include "SuffixTrie.h"
-
-using namespace std;
+#define RESERVED_CAPACITY 1024
 
 int main(void)
 {
-  TestAhoCoarsik();
-  exit(0);
+  // TestTrie();
 
-  std::ios::sync_with_stdio(false);
+  // std::ios::sync_with_stdio(false);
 
   int numberOfStrings = 0;
   std::cin >> numberOfStrings;
@@ -22,19 +18,13 @@ int main(void)
   std::string strBuffer;
   strBuffer.reserve(RESERVED_CAPACITY);
 
-	CSuffixTrie aTree;
+  struct Trie* head = getNewTrieNode();
   for (int i = 0; i < numberOfStrings; ++i) {
     std::cin >> strBuffer;
-    aTree.AddString(strBuffer);
+    insert(&head, (char*)strBuffer.c_str());
   }
-	aTree.BuildTreeIndex();
 
-  // insert complete
   std::cout << 'R' << std::endl;
-
-
-  CSuffixTrie::DataFoundVector aDataFound;
-  std::string searchResult("");
 
   // To the end of stdin
   char cmd;
@@ -48,29 +38,17 @@ int main(void)
 #ifdef DBG
         std::cout << "(main) call query" << std::endl;
 #endif
-        aDataFound = aTree.SearchAhoCorasikMultiple(strBuffer);
-        for (auto data : aDataFound) {
-          searchResult = data.sDataFound + "|";
-        }
-
-        if (searchResult.length() != 0) {
-          searchResult.pop_back();
-        } else {
-          searchResult = "-1";
-        }
-
-        std::cout << searchResult << std::endl;
-
-        searchResult.clear();
-        aDataFound.clear();
+        searchAllPatterns(head, (char*)strBuffer.c_str());
+        setWasPrintedFalse(head);
         break;
       case 'A':
-        aTree.AddString(strBuffer);
-        aTree.BuildTreeIndex();
+        insert(&head, (char*)strBuffer.c_str());
         break;
       case 'D':
-        aTree.DeleteString(strBuffer);
-        aTree.BuildTreeIndex();
+        deletion(&head, (char*)strBuffer.c_str());
+        if (head == NULL) {
+          head = getNewTrieNode();
+        }
         break;
 
       default:
@@ -83,7 +61,7 @@ int main(void)
     }
   }
 
-
+  // free other memories
 
   return 0;
 }
