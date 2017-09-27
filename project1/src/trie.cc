@@ -5,7 +5,12 @@
 #include <cstdint>
 #include "trie.h"
 
+#include <unordered_set>
 
+
+uint32_t stringID = 1;
+
+std::unordered_set <uint32_t> printed;
 
 // Function that returns a new Trie node
 struct Trie* getNewTrieNode()
@@ -38,7 +43,8 @@ void insert(struct Trie* *head, char* str)
 	}
 
 	// mark current node as leaf
-	curr->isLeaf = 1;
+	// curr->isLeaf = 1;
+	curr->isLeaf = stringID++;
 }
 
 // Iterative function to search a string in Trie. It returns 1
@@ -80,6 +86,7 @@ int searchAllPatterns(struct Trie* head, char* strQuery)
 
   bool firstPrint = true;
   bool hasAnswer = false;
+  printed.clear();
 
   char* str;
   while (*strQuery) {
@@ -95,10 +102,10 @@ int searchAllPatterns(struct Trie* head, char* strQuery)
         curr = head;
         break;
       } else if (curr -> isLeaf) {
-        if (curr -> wasPrinted == 1) {
+        if (printed.find(curr->isLeaf) != printed.end()) {
           // do not print if it was printed.
         } else {
-          curr -> wasPrinted = 1;
+          printed.insert(curr->isLeaf);
           // print start
           if (!firstPrint) {
             putchar('|');
@@ -195,25 +202,25 @@ int deletion(struct Trie* *curr, char* str)
   return 0;
 }
 
-void setWasPrintedFalse(struct Trie* head) {
-  // do it recursively
-
-  // base case
-  if (head == NULL) {
-    return;
-  }
-  
- if (head -> isLeaf) {
-    head->wasPrinted = 0;
-  }
-
-  for (uint8_t i = 0; i < CHAR_SIZE; ++i) {
-    struct Trie* child = head->character[i];
-    if (child != NULL) {
-      setWasPrintedFalse(child);
-    }
-  }
-}
+/* void setWasPrintedFalse(struct Trie* head) {
+ *   // do it recursively
+ *
+ *   // base case
+ *   if (head == NULL) {
+ *     return;
+ *   }
+ *
+ *  if (head -> isLeaf) {
+ *     head->wasPrinted = 0;
+ *   }
+ *
+ *   for (uint8_t i = 0; i < CHAR_SIZE; ++i) {
+ *     struct Trie* child = head->character[i];
+ *     if (child != NULL) {
+ *       setWasPrintedFalse(child);
+ *     }
+ *   }
+ * } */
 
 // Trie Implementation in C - Insertion, Searching and Deletion
 int TestTrie()
@@ -263,9 +270,9 @@ int TestTrie()
   insert(&head, (char*)"leap");
 
   searchAllPatterns(head, (char*)"apple");
-  setWasPrintedFalse(head);
+  // setWasPrintedFalse(head);
   searchAllPatterns(head, (char*)"pineapple");
-  setWasPrintedFalse(head);
+  // setWasPrintedFalse(head);
   // searchAllPatterns(head, "penpineappleapplepen");
 
 

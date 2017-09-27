@@ -39,7 +39,7 @@ int main(void)
         std::cout << "(main) call query" << std::endl;
 #endif
         searchAllPatterns(head, (char*)strBuffer.c_str());
-        setWasPrintedFalse(head);
+        // setWasPrintedFalse(head);
         break;
       case 'A':
         insert(&head, (char*)strBuffer.c_str());

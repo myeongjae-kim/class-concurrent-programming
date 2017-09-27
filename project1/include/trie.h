@@ -6,7 +6,6 @@
 struct Trie
 {
 	int isLeaf;	// 1 when node is a leaf node
-  int wasPrinted;
 	struct Trie* character[CHAR_SIZE];
 };
 
@@ -17,6 +16,6 @@ int deletion(struct Trie* *curr, char* str);
 
 int search(struct Trie* head, char* str);
 int searchAllPatterns(struct Trie* head, char* strQuery);
-void setWasPrintedFalse(struct Trie* head);
+// void setWasPrintedFalse(struct Trie* head);
 
 int TestTrie();
