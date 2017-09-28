@@ -6,12 +6,9 @@
 #include "trie.h"
 
 #include "AVL.h"
-#include <unordered_set>
 
 
 uint32_t patternID = 1;
-
-std::unordered_set <uint32_t> printed;
 
 // Function that returns a new Trie node
 struct Trie* getNewTrieNode()
@@ -87,7 +84,6 @@ int searchAllPatterns(struct Trie* head, char* strQuery)
 
   bool firstPrint = true;
   bool hasAnswer = false;
-  printed.clear();
 
   AVLTree T = nullptr;
 
