@@ -1,4 +1,5 @@
-.data
-.o
-.out
-.old
+*.data
+*.o
+*.out
+*.old
+run
