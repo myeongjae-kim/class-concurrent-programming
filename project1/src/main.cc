@@ -18,7 +18,7 @@ int main(void)
   std::string strBuffer;
   strBuffer.reserve(RESERVED_CAPACITY);
 
-  struct Trie* head = getNewTrieNode();
+  struct Trie* head = createTrieNode();
   for (int i = 0; i < numberOfStrings; ++i) {
     std::cin >> strBuffer;
     insert(&head, (char*)strBuffer.c_str());
@@ -45,9 +45,9 @@ int main(void)
         insert(&head, (char*)strBuffer.c_str());
         break;
       case 'D':
-        deletion(&head, (char*)strBuffer.c_str());
+        erase(&head, (char*)strBuffer.c_str());
         if (head == NULL) {
-          head = getNewTrieNode();
+          head = createTrieNode();
         }
         break;
 

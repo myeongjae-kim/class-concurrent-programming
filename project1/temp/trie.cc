@@ -5,7 +5,6 @@
 
 
 
-// Function that returns a new Trie node
 struct Trie* getNewTrieNode()
 {
 	struct Trie* node = (struct Trie*)malloc(sizeof(struct Trie));
@@ -17,52 +16,36 @@ struct Trie* getNewTrieNode()
 	return node;
 }
 
-// Iterative function to insert a string in Trie.
 void insert(struct Trie* *head, char* str)
 {
-	// start from root node
 	struct Trie* curr = *head;
 	while (*str)
 	{
-		// create a new node if path doesn't exists
 		if (curr->character[*str - 'a'] == NULL)
 			curr->character[*str - 'a'] = getNewTrieNode();
 
-		// go to next node
 		curr = curr->character[*str - 'a'];
-
-		// move to next character
 		str++;
 	}
-
-	// mark current node as leaf
 	curr->isLeaf = 1;
 }
 
-// Iterative function to search a string in Trie. It returns 1
-// if the string is found in the Trie, else it returns 0
 int search(struct Trie* head, char* str)
 {
-	// return 0 if Trie is empty
 	if (head == NULL)
 		return 0;
 
 	struct Trie* curr = head;
 	while (*str)
 	{
-		// go to next node
 		curr = curr->character[*str - 'a'];
 
-		// if string is invalid (reached end of path in Trie)
 		if (curr == NULL)
 			return 0;
 
-		// move to next character
 		str++;
 	}
 
-	// if current node is a leaf and we have reached the
-	// end of the string, return 1
 	return curr->isLeaf;
 }
 

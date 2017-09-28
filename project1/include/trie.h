@@ -1,21 +1,27 @@
-// define character size
-// currently Trie supports lowercase English characters (a - z)
-#define CHAR_SIZE 26
+#define ALPHA_NUM 26
 
-// A Trie node
+#include <cstdint>
+
 struct Trie
 {
-	int isLeaf;	// 1 when node is a leaf node
-	struct Trie* character[CHAR_SIZE];
+  /* It is zero when character is not the end of a word. */
+	int wordID;	
+
+	struct Trie* chars[ALPHA_NUM];
 };
 
-struct Trie* getNewTrieNode();
+typedef struct _Answer {
+  char* startAdr;
+  uint32_t length;
+  uint32_t patternID;
+} Answer;
 
-void insert(struct Trie* *head, char* str);
-int deletion(struct Trie* *curr, char* str);
+struct Trie* createTrieNode();
 
-int search(struct Trie* head, char* str);
-int searchAllPatterns(struct Trie* head, char* strQuery);
-// void setWasPrintedFalse(struct Trie* head);
+void insert(struct Trie* *trieHead, char* str);
+int erase(struct Trie* *trieNode, char* str);
+
+// int search(struct Trie* trieHead, char* str);
+int searchAllPatterns(struct Trie* trieHead, char* strQuery);
 
 int TestTrie();
