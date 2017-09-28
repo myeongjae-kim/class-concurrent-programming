@@ -1,4 +1,3 @@
-//base source code: http://www.techiedelight.com/trie-implementation-insert-search-delete/
 
 #include <cstdio>
 #include <cstdlib>
@@ -7,7 +6,6 @@
 #include "trie.h"
 
 #include <vector>
-
 #include <unordered_set>
 
 
@@ -16,77 +14,61 @@ std::vector < Answer > answers;
 
 std::unordered_set <uint32_t> printed;
 
-// Function that returns a new Trie node
-struct Trie* getNewTrieNode()
-{
-	struct Trie* node = (struct Trie*)malloc(sizeof(struct Trie));
-	node->isLeaf = 0;
-
-	for (int i = 0; i < CHAR_SIZE; i++)
-		node->character[i] = NULL;
-
+struct Trie* createTrieNode() {
+  // create new node
+	struct Trie* node = (struct Trie*)calloc(1, sizeof(*node));
 	return node;
 }
 
-// Iterative function to insert a string in Trie.
-void insert(struct Trie* *head, char* str)
+void insert(struct Trie* *trieRoot, char* str)
 {
-	// start from root node
-	struct Trie* curr = *head;
+	struct Trie* trieNode = *trieRoot;
 	while (*str)
 	{
-		// create a new node if path doesn't exists
-		if (curr->character[*str - 'a'] == NULL)
-			curr->character[*str - 'a'] = getNewTrieNode();
+		if (trieNode->chars[*str - 'a'] == NULL){
+			trieNode->chars[*str - 'a'] = createTrieNode();
+    }
 
-		// go to next node
-		curr = curr->character[*str - 'a'];
-
-		// move to next character
+		trieNode = trieNode->chars[*str - 'a'];
 		str++;
 	}
 
-	// mark current node as leaf
-	// curr->isLeaf = 1;
-	curr->isLeaf = patternID++;
+	trieNode->wordID = patternID++;
 }
+
+/* int search(struct Trie* trieRoot, char* str)
+ * {
+ *   if (trieRoot == NULL){
+ *     return 0;
+ *   }
+ *
+ *   struct Trie* trieNode = trieRoot;
+ *   while (*str)
+ *   {
+ *     trieNode = trieNode->chars[*str - 'a'];
+ *
+ *     if (trieNode == NULL) {
+ *       return 0;
+ *     }
+ *
+ *     str++;
+ *   }
+ *
+ *   // if trieNodeent node is a leaf and we have reached the
+ *   // end of the string, return 1
+ *   return trieNode->wordID;
+ * } */
 
 // Iterative function to search a string in Trie. It returns 1
 // if the string is found in the Trie, else it returns 0
-int search(struct Trie* head, char* str)
+int searchAllPatterns(struct Trie* trieRoot, char* strQuery)
 {
 	// return 0 if Trie is empty
-	if (head == NULL)
+	if (trieRoot == NULL){
 		return 0;
+  }
 
-	struct Trie* curr = head;
-	while (*str)
-	{
-		// go to next node
-		curr = curr->character[*str - 'a'];
-
-		// if string is invalid (reached end of path in Trie)
-		if (curr == NULL)
-			return 0;
-
-		// move to next character
-		str++;
-	}
-
-	// if current node is a leaf and we have reached the
-	// end of the string, return 1
-	return curr->isLeaf;
-}
-
-// Iterative function to search a string in Trie. It returns 1
-// if the string is found in the Trie, else it returns 0
-int searchAllPatterns(struct Trie* head, char* strQuery)
-{
-	// return 0 if Trie is empty
-	if (head == NULL)
-		return 0;
-
-	struct Trie* curr = head;
+	struct Trie* trieNode = trieRoot;
 
   Answer answerBuffer;
   printed.clear();
@@ -96,25 +78,21 @@ int searchAllPatterns(struct Trie* head, char* strQuery)
   while (*strQuery) {
     str = strQuery;
 
-    while (*str)
-    {
-      // go to next node
-      curr = curr->character[*str - 'a'];
+    while (*str) {
+      trieNode = trieNode->chars[*str - 'a'];
 
-      // if string is invalid (reached end of path in Trie)
-      if (curr == NULL) {
-        curr = head;
+      if (trieNode == NULL) {
+        trieNode = trieRoot;
         break;
-      } else if (curr -> isLeaf) {
+      } else if (trieNode -> wordID) {
         answerBuffer.startAdr = strQuery;
         answerBuffer.length = (uint32_t)(str - strQuery) + 1;
-        answerBuffer.patternID = curr->isLeaf;
+        answerBuffer.patternID = trieNode->wordID;
 
         // TODO: parallelize by using index.
         answers.push_back(answerBuffer);
       }
 
-      // move to next character
       str++;
     }
 
@@ -128,7 +106,7 @@ int searchAllPatterns(struct Trie* head, char* strQuery)
   // clear printed set and answer vector
 
 
-  char* currentChar;
+  char* printingTarget;
   uint32_t size = answers.size();
   if (size != 0) {
     // answer exists
@@ -149,10 +127,10 @@ int searchAllPatterns(struct Trie* head, char* strQuery)
     //print firstone
     Answer& tempAnswer = answers[0];
     printed.insert(tempAnswer.patternID);
-    currentChar = tempAnswer.startAdr;
+    printingTarget = tempAnswer.startAdr;
     for (uint32_t i = 0; i < tempAnswer.length; ++i) {
-      putchar(*currentChar);
-      currentChar++;
+      putchar(*printingTarget);
+      printingTarget++;
     }
 
     //print the others
@@ -160,11 +138,11 @@ int searchAllPatterns(struct Trie* head, char* strQuery)
       Answer& answer = answers[i];
       if (printed.find(answer.patternID) == printed.end()) {
         printed.insert(answer.patternID);
-        currentChar = answer.startAdr;
+        printingTarget = answer.startAdr;
         putchar('|');
         for (uint32_t j = 0; j < answer.length; ++j) {
-          putchar(*currentChar);
-          currentChar++;
+          putchar(*printingTarget);
+          printingTarget++;
         }
       }
     }
@@ -175,147 +153,78 @@ int searchAllPatterns(struct Trie* head, char* strQuery)
   }
   putchar('\n');
 
-
-  // if current node is a leaf and we have reached the
-  // end of the string, return 1
-  return curr->isLeaf;
+  return trieNode->wordID;
 }
 
 
-// returns 1 if given node has any children
-int haveChildren(struct Trie* curr)
+int haveChildren(struct Trie* trieNode)
 {
-  for (int i = 0; i < CHAR_SIZE; i++)
-    if (curr->character[i])
-      return 1;	// child found
+  for (int i = 0; i < ALPHA_NUM; i++){
+    if (trieNode->chars[i]){
+      return 1;
+    }
+  }
 
   return 0;
 }
 
-// Recursive function to delete a string in Trie.
-int deletion(struct Trie* *curr, char* str)
-{
-  // return if Trie is empty
-  if (*curr == NULL)
+int erase(struct Trie* *trieNode, char* str) {
+  if (*trieNode == NULL){
     return 0;
+  }
 
-  // if we have not reached the end of the string
   if (*str)
   {
-    // recurse for the node corresponding to next character in
-    // the string and if it returns 1, delete current node
-    // (if it is non-leaf)
-    if (*curr != NULL && (*curr)->character[*str - 'a'] != NULL &&
-        deletion(&((*curr)->character[*str - 'a']), str + 1) &&
-        (*curr)->isLeaf == 0)
-    {
-      if (!haveChildren(*curr))
-      {
-        free(*curr);
-        (*curr) = NULL;
+    // Erase is so hard that I referenced this web site.
+    // base source code: http://www.techiedelight.com/trie-implementation-insert-search-delete/
+
+    // recursively find target node
+    if (*trieNode != NULL && (*trieNode)->chars[*str - 'a'] != NULL &&
+        erase(&((*trieNode)->chars[*str - 'a']), str + 1) &&
+        (*trieNode)->wordID == 0) {
+
+      // character found
+      if (!haveChildren(*trieNode)) {
+        free(*trieNode);
+        (*trieNode) = NULL;
         return 1;
-      }
-      else {
+      } else {
         return 0;
       }
     }
   }
 
-  // if we have reached the end of the string
-  if (*str == '\0' && (*curr)->isLeaf)
-  {
-    // if current node is a leaf node and don't have any children
-    if (!haveChildren(*curr))
-    {
-      free(*curr); // delete current node
-      (*curr) = NULL;
-      return 1; // delete non-leaf parent nodes
-    }
-
-    // if current node is a leaf node and have children
-    else
-    {
-      // mark current node as non-leaf node (DON'T DELETE IT)
-      (*curr)->isLeaf = 0;
-      return 0;	   // don't delete its parent nodes
+  if (*str == '\0' && (*trieNode)->wordID) {
+    if (!haveChildren(*trieNode)) {
+      // when it is leaf node
+      // remove
+      free(*trieNode);
+      (*trieNode) = NULL;
+      return 1;
+    } else {
+      // when it is not leaf node
+      // do not remove. just makes wordID zero.
+      (*trieNode)->wordID = 0;
+      return 0;
     }
   }
 
   return 0;
 }
 
-/* void setWasPrintedFalse(struct Trie* head) {
- *   // do it recursively
- *
- *   // base case
- *   if (head == NULL) {
- *     return;
- *   }
- *
- *  if (head -> isLeaf) {
- *     head->wasPrinted = 0;
- *   }
- *
- *   for (uint8_t i = 0; i < CHAR_SIZE; ++i) {
- *     struct Trie* child = head->character[i];
- *     if (child != NULL) {
- *       setWasPrintedFalse(child);
- *     }
- *   }
- * } */
+int TestTrie() {
+  struct Trie* trieRoot = createTrieNode();
 
-// Trie Implementation in C - Insertion, Searching and Deletion
-int TestTrie()
-{
-  struct Trie* head = getNewTrieNode();
+  insert(&trieRoot, (char*)"app");
+  insert(&trieRoot, (char*)"apple");
+  insert(&trieRoot, (char*)"pineapple");
+  insert(&trieRoot, (char*)"leap");
 
-  /*   insert(&head, "hello");
-   *   printf("%d ", search(head, "hello"));   	// print 1
-   *
-   *   insert(&head, "helloworld");
-   *   printf("%d ", search(head, "helloworld"));  // print 1
-   *
-   *   printf("%d ", search(head, "helll"));   	// print 0 (Not present)
-   *
-   *   insert(&head, "hell");
-   *   printf("%d ", search(head, "hell"));		// print 1
-   *
-   *   insert(&head, "h");
-   *   printf("%d \n", search(head, "h")); 		// print 1 + newline
-   *
-   *   deletion(&head, "hello");
-   *   printf("%d ", search(head, "hello"));   	// print 0 (hello deleted)
-   *   printf("%d ", search(head, "helloworld"));  // print 1
-   *   printf("%d \n", search(head, "hell"));  	// print 1 + newline
-   *
-   *   deletion(&head, "h");
-   *   printf("%d ", search(head, "h"));   		// print 0 (h deleted)
-   *   printf("%d ", search(head, "hell"));		// print 1
-   *   printf("%d\n", search(head, "helloworld")); // print 1 + newline
-   *
-   *   deletion(&head, "helloworld");
-   *   printf("%d ", search(head, "helloworld"));  // print 0
-   *   printf("%d ", search(head, "hell"));		// print 1
-   *
-   *   deletion(&head, "hell");
-   *   printf("%d\n", search(head, "hell"));   	// print 0 + newline
-   *
-   *   if (head == NULL)
-   *     printf("Trie empty!!\n");   			// Trie is empty now
-   *
-   *   printf("%d ", search(head, "hell"));		// print 0
-   *  */
-
-  insert(&head, (char*)"app");
-  insert(&head, (char*)"apple");
-  insert(&head, (char*)"pineapple");
-  insert(&head, (char*)"leap");
-
-  searchAllPatterns(head, (char*)"apple");
-  // setWasPrintedFalse(head);
-  searchAllPatterns(head, (char*)"pineapple");
-  // setWasPrintedFalse(head);
-  // searchAllPatterns(head, "penpineappleapplepen");
+  searchAllPatterns(trieRoot, (char*)"apple");
+  // setWasPrintedFalse(trieRoot);
+  searchAllPatterns(trieRoot, (char*)"pineapple");
+  // setWasPrintedFalse(trieRoot);
+  // searchAllPatterns(trieRoot, "penpineappleapplepen");
 
 
   return 0;
