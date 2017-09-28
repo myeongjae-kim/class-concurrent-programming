@@ -3,12 +3,16 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstdint>
+#include <algorithm>
 #include "trie.h"
+
+#include <vector>
 
 #include <unordered_set>
 
 
 uint32_t patternID = 1;
+std::vector < Answer > answers;
 
 std::unordered_set <uint32_t> printed;
 
@@ -84,9 +88,9 @@ int searchAllPatterns(struct Trie* head, char* strQuery)
 
 	struct Trie* curr = head;
 
-  bool firstPrint = true;
-  bool hasAnswer = false;
+  Answer answerBuffer;
   printed.clear();
+  answers.clear();
 
   char* str;
   while (*strQuery) {
@@ -102,23 +106,12 @@ int searchAllPatterns(struct Trie* head, char* strQuery)
         curr = head;
         break;
       } else if (curr -> isLeaf) {
-        if (printed.find(curr->isLeaf) != printed.end()) {
-          // do not print if it was printed.
-        } else {
-          printed.insert(curr->isLeaf);
-          // print start
-          if (!firstPrint) {
-            putchar('|');
-          }
+        answerBuffer.startAdr = strQuery;
+        answerBuffer.length = (uint32_t)(str - strQuery) + 1;
+        answerBuffer.patternID = curr->isLeaf;
 
-          char* print = strQuery;
-          while(print <= str) {
-            putchar(*print);
-            print++;
-          }
-          firstPrint = false;
-          hasAnswer = true;
-        }
+        // TODO: parallelize by using index.
+        answers.push_back(answerBuffer);
       }
 
       // move to next character
@@ -128,12 +121,61 @@ int searchAllPatterns(struct Trie* head, char* strQuery)
     strQuery++;
   }
 
+  // TODO:print
+  // sort answer vector
+  // check whether the answer was printed
+  // if answer is not printed, print answer and add to printed set
+  // clear printed set and answer vector
 
-  if (hasAnswer == false) {
+
+  char* currentChar;
+  uint32_t size = answers.size();
+  if (size != 0) {
+    // answer exists
+    std::sort(answers.begin(), answers.end(), [](Answer lhs, Answer rhs){
+          if (lhs.startAdr < rhs.startAdr) {
+            return true;
+          } else if (lhs.startAdr > rhs.startAdr) {
+            return false;
+          } else {
+            if (lhs.length < rhs.length) {
+              return true;
+            } else {
+              return false;
+            }
+          }
+        });
+
+    //print firstone
+    Answer& tempAnswer = answers[0];
+    printed.insert(tempAnswer.patternID);
+    currentChar = tempAnswer.startAdr;
+    for (uint32_t i = 0; i < tempAnswer.length; ++i) {
+      putchar(*currentChar);
+      currentChar++;
+    }
+
+    //print the others
+    for (uint32_t i = 1; i < size; ++i) {
+      Answer& answer = answers[i];
+      if (printed.find(answer.patternID) == printed.end()) {
+        printed.insert(answer.patternID);
+        currentChar = answer.startAdr;
+        putchar('|');
+        for (uint32_t j = 0; j < answer.length; ++j) {
+          putchar(*currentChar);
+          currentChar++;
+        }
+      }
+    }
+
+  } else {
+    // no answer
     printf("-1");
   }
-
   putchar('\n');
+
+
   // if current node is a leaf and we have reached the
   // end of the string, return 1
   return curr->isLeaf;
