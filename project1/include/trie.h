@@ -1,6 +1,8 @@
 #define ALPHA_NUM 26
+#define THREAD_NUM 36
 
 #include <cstdint>
+#include <pthread.h>
 
 struct Trie
 {

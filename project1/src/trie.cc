@@ -1,7 +1,7 @@
-
 #include <cstdio>
 #include <cstdlib>
 #include <cstdint>
+#include <cstring>
 #include <algorithm>
 #include "trie.h"
 
@@ -57,44 +57,93 @@ int search(struct Trie* trieRoot, char* str)
   return trieNode->wordID;
 }
 
-int searchAllPatterns(struct Trie* trieRoot, char* strQuery)
-{
-	// return 0 if Trie is empty
-	if (trieRoot == NULL){
-		return 0;
-  }
+// struct for parallelizing
 
-	struct Trie* trieNode = trieRoot;
+typedef struct _ThreadArg {
+  struct Trie* trieRoot; // this value could be a global variable.
+  char* strQuery;
+  uint32_t searchLength;
+} ThreadArg;
 
+
+pthread_mutex_t vectorMutex = PTHREAD_MUTEX_INITIALIZER;
+
+pthread_t threads[THREAD_NUM];
+ThreadArg threadArgs[THREAD_NUM];
+
+// argument is dynamically allocated.
+void* searchForThread(void* tid) {
+  ThreadArg data = threadArgs[uint64_t(tid)];
+
+  struct Trie* trieNode = data.trieRoot;
   Answer answerBuffer;
-  printed.clear();
-  answers.clear();
 
+
+  uint32_t searchCount = 0;
   char* str;
-  while (*strQuery) {
-    str = strQuery;
+  while (searchCount < data.searchLength && *data.strQuery) {
+    str = data.strQuery;
 
     while (*str) {
       trieNode = trieNode->chars[*str - 'a'];
 
       if (trieNode == NULL) {
-        trieNode = trieRoot;
+        trieNode = data.trieRoot;
         break;
       } else if (trieNode -> wordID) {
-        answerBuffer.startAdr = strQuery;
-        answerBuffer.length = (uint32_t)(str - strQuery) + 1;
+        answerBuffer.startAdr = data.strQuery;
+        answerBuffer.length = (uint32_t)(str - data.strQuery) + 1;
         answerBuffer.patternID = trieNode->wordID;
 
         // TODO: parallelize by using index.
+        pthread_mutex_lock(&vectorMutex);
         answers.push_back(answerBuffer);
+        pthread_mutex_unlock(&vectorMutex);
       }
 
       str++;
     }
 
-    trieNode = trieRoot;
-    strQuery++;
+    trieNode = data.trieRoot;
+    data.strQuery++;
+    searchCount++;
   }
+
+  return nullptr;
+}
+
+
+int searchAllPatterns(struct Trie* trieRoot, char* strQuery)
+{
+  // return 0 if Trie is empty
+  if (trieRoot == NULL){
+    return 0;
+  }
+
+  printed.clear();
+  answers.clear();
+
+
+  static const int searchInterationNum = 20;
+  uint32_t numberOfThreadRun = (strlen(strQuery) / searchInterationNum) + 1;
+  for (uint64_t i = 0; i < numberOfThreadRun; ++i) {
+    uint64_t tid = i % THREAD_NUM;
+    pthread_join(threads[tid], NULL);
+    threadArgs[tid].strQuery = strQuery;
+    threadArgs[tid].trieRoot = trieRoot;
+    threadArgs[tid].searchLength = searchInterationNum;
+
+    pthread_create(&threads[tid], NULL, searchForThread, (void*)tid);
+
+    strQuery += searchInterationNum;
+  }
+
+  //wait threads
+  //
+  for (int i = 0; i < THREAD_NUM; ++i) {
+    pthread_join(threads[i], NULL);
+  }
+
 
   // TODO:print
   // sort answer vector
@@ -108,17 +157,17 @@ int searchAllPatterns(struct Trie* trieRoot, char* strQuery)
   if (size != 0) {
     // answer exists
     std::sort(answers.begin(), answers.end(), [](Answer lhs, Answer rhs){
-          if (lhs.startAdr < rhs.startAdr) {
-            return true;
-          } else if (lhs.startAdr > rhs.startAdr) {
-            return false;
-          } else {
-            if (lhs.length < rhs.length) {
-              return true;
-            } else {
-              return false;
-            }
-          }
+        if (lhs.startAdr < rhs.startAdr) {
+        return true;
+        } else if (lhs.startAdr > rhs.startAdr) {
+        return false;
+        } else {
+        if (lhs.length < rhs.length) {
+        return true;
+        } else {
+        return false;
+        }
+        }
         });
 
     //print firstone
@@ -150,7 +199,8 @@ int searchAllPatterns(struct Trie* trieRoot, char* strQuery)
   }
   putchar('\n');
 
-  return trieNode->wordID;
+  //return has no meaning.
+  return 1;
 }
 
 
