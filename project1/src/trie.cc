@@ -124,7 +124,7 @@ int searchAllPatterns(struct Trie* trieRoot, char* strQuery)
   answers.clear();
 
 
-  static const int searchInterationNum = 20;
+  static const int searchInterationNum = 500;
   uint32_t numberOfThreadRun = (strlen(strQuery) / searchInterationNum) + 1;
   for (uint64_t i = 0; i < numberOfThreadRun; ++i) {
     uint64_t tid = i % THREAD_NUM;
@@ -142,6 +142,7 @@ int searchAllPatterns(struct Trie* trieRoot, char* strQuery)
   //
   for (int i = 0; i < THREAD_NUM; ++i) {
     pthread_join(threads[i], NULL);
+    threads[i] = 0;
   }
 
 
