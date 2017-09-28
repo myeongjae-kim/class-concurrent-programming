@@ -54,13 +54,9 @@ int search(struct Trie* trieRoot, char* str)
     str++;
   }
 
-  // if trieNodeent node is a leaf and we have reached the
-  // end of the string, return 1
   return trieNode->wordID;
 }
 
-// Iterative function to search a string in Trie. It returns 1
-// if the string is found in the Trie, else it returns 0
 int searchAllPatterns(struct Trie* trieRoot, char* strQuery)
 {
 	// return 0 if Trie is empty
