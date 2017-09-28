@@ -1,4 +1,3 @@
-#include <stdio.h>
 #include "trie.h"
 
 #include <iostream>
@@ -9,7 +8,7 @@ int main(void)
 {
   // TestTrie();
 
-  // std::ios::sync_with_stdio(false);
+  std::ios::sync_with_stdio(false);
 
   int numberOfStrings = 0;
   std::cin >> numberOfStrings;

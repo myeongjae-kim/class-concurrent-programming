@@ -1,4 +1,5 @@
-#include <cstdio>
+#include <iostream>
+
 #include <cstdlib>
 #include <cstdint>
 #include <cstring>
@@ -124,7 +125,7 @@ int searchAllPatterns(struct Trie* trieRoot, char* strQuery)
   answers.clear();
 
 
-  static const int searchInterationNum = 500;
+  static const int searchInterationNum = 3000;
   uint32_t numberOfThreadRun = (strlen(strQuery) / searchInterationNum) + 1;
   for (uint64_t i = 0; i < numberOfThreadRun; ++i) {
     uint64_t tid = i % THREAD_NUM;
@@ -176,7 +177,7 @@ int searchAllPatterns(struct Trie* trieRoot, char* strQuery)
     printed.insert(tempAnswer.patternID);
     printingTarget = tempAnswer.startAdr;
     for (uint32_t i = 0; i < tempAnswer.length; ++i) {
-      putchar(*printingTarget);
+      std::cout << *printingTarget;
       printingTarget++;
     }
 
@@ -186,9 +187,9 @@ int searchAllPatterns(struct Trie* trieRoot, char* strQuery)
       if (printed.find(answer.patternID) == printed.end()) {
         printed.insert(answer.patternID);
         printingTarget = answer.startAdr;
-        putchar('|');
+        std::cout << '|';
         for (uint32_t j = 0; j < answer.length; ++j) {
-          putchar(*printingTarget);
+          std::cout << *printingTarget;
           printingTarget++;
         }
       }
@@ -196,9 +197,9 @@ int searchAllPatterns(struct Trie* trieRoot, char* strQuery)
 
   } else {
     // no answer
-    printf("-1");
+    std::cout << "-1";
   }
-  putchar('\n');
+  std::cout << std::endl;
 
   //return has no meaning.
   return 1;
