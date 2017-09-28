@@ -5,10 +5,12 @@
 #include <cstdint>
 #include "trie.h"
 
-#include "AVL.h"
+#include <unordered_set>
 
 
 uint32_t patternID = 1;
+
+std::unordered_set <uint32_t> printed;
 
 // Function that returns a new Trie node
 struct Trie* getNewTrieNode()
@@ -84,8 +86,7 @@ int searchAllPatterns(struct Trie* head, char* strQuery)
 
   bool firstPrint = true;
   bool hasAnswer = false;
-
-  AVLTree T = nullptr;
+  printed.clear();
 
   char* str;
   while (*strQuery) {
@@ -101,10 +102,10 @@ int searchAllPatterns(struct Trie* head, char* strQuery)
         curr = head;
         break;
       } else if (curr -> isLeaf) {
-        if (AVL_Find(curr->isLeaf, T)) {
+        if (printed.find(curr->isLeaf) != printed.end()) {
           // do not print if it was printed.
         } else {
-          T = AVL_Insert(curr->isLeaf, T);
+          printed.insert(curr->isLeaf);
           // print start
           if (!firstPrint) {
             putchar('|');
@@ -133,8 +134,6 @@ int searchAllPatterns(struct Trie* head, char* strQuery)
   }
 
   putchar('\n');
-
-  DeleteTree(T);
   // if current node is a leaf and we have reached the
   // end of the string, return 1
   return curr->isLeaf;
