@@ -2,20 +2,12 @@
 // currently Trie supports lowercase English characters (a - z)
 #define CHAR_SIZE 26
 
-#include <cstdint>
-
 // A Trie node
 struct Trie
 {
 	int isLeaf;	// 1 when node is a leaf node
 	struct Trie* character[CHAR_SIZE];
 };
-
-typedef struct _Answer {
-  char* startAdr;
-  uint32_t length;
-  uint32_t patternID;
-} Answer;
 
 struct Trie* getNewTrieNode();
 
