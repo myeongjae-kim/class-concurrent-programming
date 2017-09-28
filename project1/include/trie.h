@@ -21,7 +21,7 @@ struct Trie* createTrieNode();
 void insert(struct Trie* *trieHead, char* str);
 int erase(struct Trie* *trieNode, char* str);
 
-// int search(struct Trie* trieHead, char* str);
+int search(struct Trie* trieHead, char* str);
 int searchAllPatterns(struct Trie* trieHead, char* strQuery);
 
 int TestTrie();

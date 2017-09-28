@@ -36,28 +36,28 @@ void insert(struct Trie* *trieRoot, char* str)
 	trieNode->wordID = patternID++;
 }
 
-/* int search(struct Trie* trieRoot, char* str)
- * {
- *   if (trieRoot == NULL){
- *     return 0;
- *   }
- *
- *   struct Trie* trieNode = trieRoot;
- *   while (*str)
- *   {
- *     trieNode = trieNode->chars[*str - 'a'];
- *
- *     if (trieNode == NULL) {
- *       return 0;
- *     }
- *
- *     str++;
- *   }
- *
- *   // if trieNodeent node is a leaf and we have reached the
- *   // end of the string, return 1
- *   return trieNode->wordID;
- * } */
+int search(struct Trie* trieRoot, char* str)
+{
+  if (trieRoot == NULL){
+    return 0;
+  }
+
+  struct Trie* trieNode = trieRoot;
+  while (*str)
+  {
+    trieNode = trieNode->chars[*str - 'a'];
+
+    if (trieNode == NULL) {
+      return 0;
+    }
+
+    str++;
+  }
+
+  // if trieNodeent node is a leaf and we have reached the
+  // end of the string, return 1
+  return trieNode->wordID;
+}
 
 // Iterative function to search a string in Trie. It returns 1
 // if the string is found in the Trie, else it returns 0
@@ -96,6 +96,7 @@ int searchAllPatterns(struct Trie* trieRoot, char* strQuery)
       str++;
     }
 
+    trieNode = trieRoot;
     strQuery++;
   }
 
