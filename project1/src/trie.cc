@@ -75,26 +75,67 @@ bool finished;
 void* searchSubstring(void* arg) {
   long tid = (long)arg;
 
-  std::cout << "(thread " << tid <<") Hi, I am new thread." << std::endl;
-
   pthread_mutex_lock(&condMutex);
-  std::cout << "(thread " << tid <<") Now I am gonna sleep. " << std::endl;
   threadIsSleep[tid] = true;
   pthread_cond_wait(&cond, &condMutex);
   pthread_mutex_unlock(&condMutex);
 
+
   while (!finished) {
-    std::cout << "(thread " << tid <<") Good morning!" << std::endl;
+    if (threadIsSleep[tid] == false) {
+      ThreadArg data = threadArgs[uint64_t(tid)];
+
+      struct Trie* trieNode = data.trieRoot;
+      Answer answerBuffer;
+
+      std::string query(data.strQuery);
+
+      uint32_t searchCount = 0;
+      char* str;
+      while (searchCount < data.searchLength && *data.strQuery) {
+        str = data.strQuery;
+
+        while (*str) {
+          trieNode = trieNode->chars[*str - 'a'];
+
+          if (trieNode == NULL) {
+            trieNode = data.trieRoot;
+            break;
+          } else if (trieNode -> wordID) {
+            answerBuffer.startAdr = data.strQuery;
+            answerBuffer.length = (uint32_t)(str - data.strQuery) + 1;
+            answerBuffer.patternID = trieNode->wordID;
+
+            pthread_mutex_lock(&vectorMutex);
+            answers.push_back(answerBuffer);
+            pthread_mutex_unlock(&vectorMutex);
+          }
+
+          str++;
+        }
+
+        trieNode = data.trieRoot;
+        data.strQuery++;
+        searchCount++;
+      }
+    }
 
 
-    // do something
 
+sleep:
     pthread_mutex_lock(&condMutex);
-    std::cout << "(thread " << tid <<") I finished my duties. Good night!" << std::endl;
     threadIsSleep[tid] = true;
     pthread_cond_wait(&cond, &condMutex);
     // Waked up
     pthread_mutex_unlock(&condMutex);
+
+    if (threadIsSleep[tid] == true) {
+      if (finished) {
+        break;
+      } else {
+        goto sleep;
+      }
+    }
   }
 
 
@@ -156,27 +197,81 @@ int searchAllPatterns(struct Trie* trieRoot, char* strQuery)
   printed.clear();
   answers.clear();
 
+  // prepare arguments for theads
 
+  uint64_t tid = THREAD_NUM - 1;
   uint32_t numberOfThreadRun = (strlen(strQuery) / SEARCH_ITER_NUM) + 1;
   for (uint64_t i = 0; i < numberOfThreadRun; ++i) {
-    uint64_t tid = i % THREAD_NUM;
-    pthread_join(threads[tid], NULL);
+    tid = i % THREAD_NUM;
     threadArgs[tid].strQuery = strQuery;
     threadArgs[tid].trieRoot = trieRoot;
     threadArgs[tid].searchLength = SEARCH_ITER_NUM;
 
-    pthread_create(&threads[tid], NULL, searchForThread, (void*)tid);
+    // full of threads. Run!
+    if (tid == THREAD_NUM - 1) {
+
+      // wake up threads
+      // thread reinit for start
+      for (int i = 0; i < THREAD_NUM; ++i) {
+        threadIsSleep[i] = false;
+      }
+
+      // Wake up all threads to work
+      pthread_mutex_lock(&condMutex);
+      pthread_cond_broadcast(&cond);
+      pthread_mutex_unlock(&condMutex);
+
+
+      // Wait for all threads to finish work
+      while (1) {
+        bool all_thread_done = true;
+        for (int i = 0; i < THREAD_NUM; i++) {
+          if (threadIsSleep[i] == false) {
+            all_thread_done = false;
+            break;
+          }
+        }
+        if (all_thread_done) {
+          break;
+        }
+        pthread_yield();
+      }
+
+    }
 
     strQuery += SEARCH_ITER_NUM;
   }
 
-  //wait threads
-  //
-  for (int i = 0; i < THREAD_NUM; ++i) {
-    pthread_join(threads[i], NULL);
-    threads[i] = 0;
-  }
+  // there is left threads. Run them.
+  if (tid != THREAD_NUM - 1) {
 
+    // wake up threads
+    // thread reinit for start
+    for (uint32_t i = 0; i < tid + 1; ++i) {
+      threadIsSleep[i] = false;
+    }
+
+    // Wake up all threads to work
+    pthread_mutex_lock(&condMutex);
+    pthread_cond_broadcast(&cond);
+    pthread_mutex_unlock(&condMutex);
+
+
+    // Wait for all threads to finish work
+    while (1) {
+      bool all_thread_done = true;
+      for (uint32_t i = 0; i < tid + 1; i++) {
+        if (threadIsSleep[i] == false) {
+          all_thread_done = false;
+          break;
+        }
+      }
+      if (all_thread_done) {
+        break;
+      }
+      pthread_yield();
+    }
+  }
 
   // TODO:print
   // sort answer vector

@@ -59,10 +59,12 @@ int main(void)
   }
 
 
-  int tempCount = 0;
-  bool endCondition = false; // when cmd receives EOF
+  std::cout << 'R' << std::endl;
+
+  // To the end of stdin
+  char cmd;
   while (1) {
-    if (endCondition == true) {
+    if (std::cin >> cmd == 0) {
       finished = true;
 
       // Wake up all threads to terminate
@@ -72,60 +74,15 @@ int main(void)
       break;
     }
 
-    for (int i = 0; i < THREAD_NUM; ++i) {
-      threadIsSleep[i] = false;
-    }
-
-    // Wake up all threads to work
-    pthread_mutex_lock(&condMutex);
-    pthread_cond_broadcast(&cond);
-    pthread_mutex_unlock(&condMutex);
-
-    // Wait for all threads to finish work
-    while (1) {
-      bool all_thread_done = true;
-      for (int i = 0; i < THREAD_NUM; i++) {
-        if (threadIsSleep[i] == false) {
-          all_thread_done = false;
-          break;
-        }
-      }
-      if (all_thread_done) {
-        break;
-      }
-      pthread_yield();
-    }
-
-    // go to next query
-    tempCount++;
-    if (tempCount >= 10) {
-      endCondition = true;
-    }
-  }
-
-  // Wait threads end
-  for (int i = 0; i < THREAD_NUM; i++) {
-    pthread_join(threads[i], NULL);
-  }
-
-  return 0;
-
-
-
-  std::cout << 'R' << std::endl;
-
-  // To the end of stdin
-  char cmd;
-  while (std::cin >> cmd) {
     std::cin.get();
 
     // get argument
     getline(std::cin, strBuffer);
     switch (cmd) {
       case 'Q':
-#ifdef DBG
-        std::cout << "(main) call query" << std::endl;
-#endif
+
+
+
         searchAllPatterns(head, (char*)strBuffer.c_str());
         // setWasPrintedFalse(head);
         break;
@@ -150,6 +107,11 @@ int main(void)
   }
 
   // free other memories
+
+  // Wait threads end
+  for (int i = 0; i < THREAD_NUM; i++) {
+    pthread_join(threads[i], NULL);
+  }
 
   return 0;
 }
