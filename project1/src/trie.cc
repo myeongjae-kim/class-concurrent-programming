@@ -220,29 +220,17 @@ int erase(struct Trie* *trieNode, char* str) {
 
   if (*str) {
     // recursively find target node
-    // WTH
-    
-    // ndoe is not null
-    if (*trieNode != NULL) {
+    if (*trieNode != NULL && (*trieNode)->chars[*str - 'a'] != NULL &&
+        erase(&((*trieNode)->chars[*str - 'a']), str + 1) &&
+        (*trieNode)->wordID == 0) {
 
-      // it has a link to target string
-      if ((*trieNode)->chars[*str-'a'] != NULL) {
-        
-        // recursively find target stiring.
-        if (erase(&((*trieNode)->chars[*str-'a']), str + 1)) {
-
-          // when it is not the end of string
-          if ((*trieNode)->wordID == 0) {
-            // character found
-            if (!haveChildren(*trieNode)) {
-              free(*trieNode);
-              (*trieNode) = NULL;
-              return 1;
-            } else {
-              return 0;
-            }
-          }
-        }
+      // character found
+      if (!haveChildren(*trieNode)) {
+        free(*trieNode);
+        (*trieNode) = NULL;
+        return 1;
+      } else {
+        return 0;
       }
     }
   }
