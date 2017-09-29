@@ -126,18 +126,17 @@ int searchAllPatterns(struct Trie* trieRoot, char* strQuery)
   answers.clear();
 
 
-  static const int searchInterationNum = 22000;
-  uint32_t numberOfThreadRun = (strlen(strQuery) / searchInterationNum) + 1;
+  uint32_t numberOfThreadRun = (strlen(strQuery) / SEARCH_ITER_NUM) + 1;
   for (uint64_t i = 0; i < numberOfThreadRun; ++i) {
     uint64_t tid = i % THREAD_NUM;
     pthread_join(threads[tid], NULL);
     threadArgs[tid].strQuery = strQuery;
     threadArgs[tid].trieRoot = trieRoot;
-    threadArgs[tid].searchLength = searchInterationNum;
+    threadArgs[tid].searchLength = SEARCH_ITER_NUM;
 
     pthread_create(&threads[tid], NULL, searchForThread, (void*)tid);
 
-    strQuery += searchInterationNum;
+    strQuery += SEARCH_ITER_NUM;
   }
 
   //wait threads
@@ -225,9 +224,7 @@ int erase(struct Trie* *trieNode, char* str) {
 
   if (*str)
   {
-    // Erase is so hard that I referenced this web site.
-    // base source code: http://www.techiedelight.com/trie-implementation-insert-search-delete/
-
+    //TODO: change construct
     // recursively find target node
     if (*trieNode != NULL && (*trieNode)->chars[*str - 'a'] != NULL &&
         erase(&((*trieNode)->chars[*str - 'a']), str + 1) &&
