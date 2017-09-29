@@ -4,7 +4,7 @@
 #include <pthread.h>
 
 // for performance
-#define THREAD_NUM 50
+#define THREAD_NUM 36
 static const uint32_t SEARCH_ITER_NUM = 22000;
 
 

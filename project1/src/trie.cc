@@ -97,7 +97,6 @@ void* searchForThread(void* tid) {
         answerBuffer.length = (uint32_t)(str - data.strQuery) + 1;
         answerBuffer.patternID = trieNode->wordID;
 
-        // TODO: parallelize by using index.
         pthread_mutex_lock(&vectorMutex);
         answers.push_back(answerBuffer);
         pthread_mutex_unlock(&vectorMutex);
@@ -222,25 +221,36 @@ int erase(struct Trie* *trieNode, char* str) {
     return 0;
   }
 
-  if (*str)
-  {
-    //TODO: change construct
+  if (*str) {
     // recursively find target node
-    if (*trieNode != NULL && (*trieNode)->chars[*str - 'a'] != NULL &&
-        erase(&((*trieNode)->chars[*str - 'a']), str + 1) &&
-        (*trieNode)->wordID == 0) {
+    // WTH
+    
+    // ndoe is not null
+    if (*trieNode != NULL) {
 
-      // character found
-      if (!haveChildren(*trieNode)) {
-        free(*trieNode);
-        (*trieNode) = NULL;
-        return 1;
-      } else {
-        return 0;
+      // it has a link to target string
+      if ((*trieNode)->chars[*str-'a'] != NULL) {
+        
+        // recursively find target stiring.
+        if (erase(&((*trieNode)->chars[*str-'a']), str + 1)) {
+
+          // when it is not the end of string
+          if ((*trieNode)->wordID == 0) {
+            // character found
+            if (!haveChildren(*trieNode)) {
+              free(*trieNode);
+              (*trieNode) = NULL;
+              return 1;
+            } else {
+              return 0;
+            }
+          }
+        }
       }
     }
   }
 
+  // this is a case
   if (*str == '\0' && (*trieNode)->wordID) {
     if (!haveChildren(*trieNode)) {
       // when it is leaf node
