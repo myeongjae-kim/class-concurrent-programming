@@ -60,14 +60,17 @@ int search(struct Trie* trieRoot, char* str)
 
 // struct for parallelizing
 
-pthread_cond_t cond;
-pthread_mutex_t condMutex = PTHREAD_MUTEX_INITIALIZER;
+typedef struct _ThreadArg {
+  struct Trie* trieRoot; // this value could be a global variable.
+  char* strQuery;
+  uint32_t searchLength;
+} ThreadArg;
+
 
 pthread_mutex_t vectorMutex = PTHREAD_MUTEX_INITIALIZER;
 
 pthread_t threads[THREAD_NUM];
 ThreadArg threadArgs[THREAD_NUM];
-bool threadsRet[THREAD_NUM];
 
 // argument is dynamically allocated.
 void* searchForThread(void* tid) {
@@ -94,6 +97,7 @@ void* searchForThread(void* tid) {
         answerBuffer.length = (uint32_t)(str - data.strQuery) + 1;
         answerBuffer.patternID = trieNode->wordID;
 
+        // TODO: parallelize by using index.
         pthread_mutex_lock(&vectorMutex);
         answers.push_back(answerBuffer);
         pthread_mutex_unlock(&vectorMutex);
@@ -122,17 +126,18 @@ int searchAllPatterns(struct Trie* trieRoot, char* strQuery)
   answers.clear();
 
 
-  uint32_t numberOfThreadRun = (strlen(strQuery) / SEARCH_ITER_NUM) + 1;
+  static const int searchInterationNum = 22000;
+  uint32_t numberOfThreadRun = (strlen(strQuery) / searchInterationNum) + 1;
   for (uint64_t i = 0; i < numberOfThreadRun; ++i) {
     uint64_t tid = i % THREAD_NUM;
     pthread_join(threads[tid], NULL);
     threadArgs[tid].strQuery = strQuery;
     threadArgs[tid].trieRoot = trieRoot;
-    threadArgs[tid].searchLength = SEARCH_ITER_NUM;
+    threadArgs[tid].searchLength = searchInterationNum;
 
     pthread_create(&threads[tid], NULL, searchForThread, (void*)tid);
 
-    strQuery += SEARCH_ITER_NUM;
+    strQuery += searchInterationNum;
   }
 
   //wait threads
@@ -218,36 +223,27 @@ int erase(struct Trie* *trieNode, char* str) {
     return 0;
   }
 
-  if (*str) {
+  if (*str)
+  {
+    // Erase is so hard that I referenced this web site.
+    // base source code: http://www.techiedelight.com/trie-implementation-insert-search-delete/
+
     // recursively find target node
-    // WTH
-    
-    // ndoe is not null
-    if (*trieNode != NULL) {
+    if (*trieNode != NULL && (*trieNode)->chars[*str - 'a'] != NULL &&
+        erase(&((*trieNode)->chars[*str - 'a']), str + 1) &&
+        (*trieNode)->wordID == 0) {
 
-      // it has a link to target string
-      if ((*trieNode)->chars[*str-'a'] != NULL) {
-        
-        // recursively find target stiring.
-        if (erase(&((*trieNode)->chars[*str-'a']), str + 1)) {
-
-          // when it is not the end of string
-          if ((*trieNode)->wordID == 0) {
-            // character found
-            if (!haveChildren(*trieNode)) {
-              free(*trieNode);
-              (*trieNode) = NULL;
-              return 1;
-            } else {
-              return 0;
-            }
-          }
-        }
+      // character found
+      if (!haveChildren(*trieNode)) {
+        free(*trieNode);
+        (*trieNode) = NULL;
+        return 1;
+      } else {
+        return 0;
       }
     }
   }
 
-  // this is a case
   if (*str == '\0' && (*trieNode)->wordID) {
     if (!haveChildren(*trieNode)) {
       // when it is leaf node

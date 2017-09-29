@@ -60,6 +60,10 @@ int main(void)
     }
   }
 
+  if (search(head, (char*)"j")) {
+    printf("j is exist");
+  }
+
   // free other memories
 
   return 0;
