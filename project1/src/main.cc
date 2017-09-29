@@ -64,8 +64,7 @@ int main(void)
   // To the end of stdin
   char cmd;
   while (1) {
-    std::cin >> cmd;
-    if (cmd == 0) {
+    if ( !(std::cin >> cmd)) {
       finished = true;
 
       // Wake up all threads to terminate
