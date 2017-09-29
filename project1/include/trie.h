@@ -1,8 +1,12 @@
 #define ALPHA_NUM 26
-#define THREAD_NUM 42
 
 #include <cstdint>
 #include <pthread.h>
+
+// for performance
+#define THREAD_NUM 36
+static const uint32_t SEARCH_ITER_NUM = 22000;
+
 
 struct Trie
 {
