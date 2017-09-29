@@ -1,5 +1,5 @@
 #define ALPHA_NUM 26
-#define THREAD_NUM 36
+#define THREAD_NUM 50
 
 #include <cstdint>
 #include <pthread.h>
