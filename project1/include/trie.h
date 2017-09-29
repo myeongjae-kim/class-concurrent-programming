@@ -5,7 +5,7 @@
 
 // for threads
 #define THREAD_NUM 60
-static const uint32_t SEARCH_ITER_NUM = 14000;
+static const uint32_t SEARCH_ITER_NUM = 16000;
 
 typedef struct _ThreadArg {
   struct Trie* trieRoot; // this value could be a global variable.
