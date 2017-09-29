@@ -60,17 +60,14 @@ int search(struct Trie* trieRoot, char* str)
 
 // struct for parallelizing
 
-typedef struct _ThreadArg {
-  struct Trie* trieRoot; // this value could be a global variable.
-  char* strQuery;
-  uint32_t searchLength;
-} ThreadArg;
-
+pthread_cond_t cond;
+pthread_mutex_t condMutex = PTHREAD_MUTEX_INITIALIZER;
 
 pthread_mutex_t vectorMutex = PTHREAD_MUTEX_INITIALIZER;
 
 pthread_t threads[THREAD_NUM];
 ThreadArg threadArgs[THREAD_NUM];
+bool threadsRet[THREAD_NUM];
 
 // argument is dynamically allocated.
 void* searchForThread(void* tid) {
