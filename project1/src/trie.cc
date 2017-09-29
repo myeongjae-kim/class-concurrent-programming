@@ -67,7 +67,42 @@ pthread_mutex_t vectorMutex = PTHREAD_MUTEX_INITIALIZER;
 
 pthread_t threads[THREAD_NUM];
 ThreadArg threadArgs[THREAD_NUM];
-bool threadsRet[THREAD_NUM];
+bool threadIsSleep[THREAD_NUM];
+
+bool finished;
+
+
+void* searchSubstring(void* arg) {
+  long tid = (long)arg;
+
+  std::cout << "(thread " << tid <<") Hi, I am new thread." << std::endl;
+
+  pthread_mutex_lock(&condMutex);
+  std::cout << "(thread " << tid <<") Now I am gonna sleep. " << std::endl;
+  threadIsSleep[tid] = true;
+  pthread_cond_wait(&cond, &condMutex);
+  pthread_mutex_unlock(&condMutex);
+
+  while (!finished) {
+    std::cout << "(thread " << tid <<") Good morning!" << std::endl;
+
+
+    // do something
+
+    pthread_mutex_lock(&condMutex);
+    std::cout << "(thread " << tid <<") I finished my duties. Good night!" << std::endl;
+    threadIsSleep[tid] = true;
+    pthread_cond_wait(&cond, &condMutex);
+    // Waked up
+    pthread_mutex_unlock(&condMutex);
+  }
+
+
+  return nullptr;
+}
+
+
+
 
 // argument is dynamically allocated.
 void* searchForThread(void* tid) {
@@ -202,7 +237,7 @@ int searchAllPatterns(struct Trie* trieRoot, char* strQuery)
 }
 
 
-int haveChildren(struct Trie* trieNode)
+int childExist(struct Trie* trieNode)
 {
   for (int i = 0; i < ALPHA_NUM; i++){
     if (trieNode->chars[i]){
@@ -235,7 +270,7 @@ int erase(struct Trie* *trieNode, char* str) {
 
 
       // erase node if it has no children node.
-      if (!haveChildren(*trieNode)) {
+      if (!childExist(*trieNode)) {
         free(*trieNode);
         (*trieNode) = NULL;
         return 1;
@@ -247,10 +282,12 @@ int erase(struct Trie* *trieNode, char* str) {
 
   // this is a case
   if (*str == '\0' && (*trieNode)->wordID) {
-    if (!haveChildren(*trieNode)) {
+    if (!childExist(*trieNode)) {
       // when it is leaf node
       // remove
       free(*trieNode);
+
+      // remove
       (*trieNode) = NULL;
       return 1;
     } else {

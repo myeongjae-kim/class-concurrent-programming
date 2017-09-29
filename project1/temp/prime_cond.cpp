@@ -6,120 +6,126 @@
 
 int thread_ret[NUM_THREAD];
 
+pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+
 int range_start;
 int range_end;
 
-int finished = 0;
-
-pthread_cond_t cond;
-pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+bool is_done = false;
 
 bool IsPrime(int n) {
-  if (n < 2) {
-    return false;
-  }
-
-  for (int i = 2; i <= sqrt(n); i++) {
-    if (n % i == 0) {
-      return false;
+    if (n < 2) {
+        return false;
     }
-  }
-  return true;
+
+    for (int i = 2; i <= sqrt(n); i++) {
+        if (n % i == 0) {
+            return false;
+        }
+    }
+    return true;
 }
 
 void* ThreadFunc(void* arg) {
-  long tid = (long)arg;
+    long tid = (long)arg;
 
-  // wait
-  pthread_mutex_lock(&mutex);
-  pthread_cond_wait(&cond, &mutex);
-  pthread_mutex_unlock(&mutex);
-
-  while (!finished) {
-    // Split range for this thread
-    int start = range_start + ((range_end - range_start) / NUM_THREAD) * tid;
-    int end = range_start + ((range_end - range_start) / NUM_THREAD) * (tid+1);
-    if (tid == NUM_THREAD - 1) {
-      end = range_end + 1;
-    }
-
-    long cnt_prime = 0;
-    for (int i = start; i < end; i++) {
-      if (IsPrime(i)) {
-        cnt_prime++;
-      }
-    }
-
-
-
+    // Sleep right after this thread has created
     pthread_mutex_lock(&mutex);
-
-    // If below statement is not in the CS, lost wait will be occurred.
-    thread_ret[tid] = cnt_prime;
-
+    thread_ret[tid] = -1;
     pthread_cond_wait(&cond, &mutex);
     pthread_mutex_unlock(&mutex);
-  }
 
+    while (!is_done) {
+        // split range for this thread
+        int start = range_start + ((range_end - range_start) / NUM_THREAD) * tid;
+        int end = range_start + ((range_end - range_start) / NUM_THREAD) * (tid+1);
+        if (tid == NUM_THREAD - 1) {
+            end = range_end + 1;
+        }
+        
+        long cnt_prime = 0;
+        for (int i = start; i < end; i++) {
+            if (IsPrime(i)) {
+                cnt_prime++;
+            }
+        }
 
-  return NULL;
+        // Sleep on the condition variable
+        pthread_mutex_lock(&mutex);
+        thread_ret[tid] = cnt_prime;
+        pthread_cond_wait(&cond, &mutex);
+        // Waked up
+        pthread_mutex_unlock(&mutex);
+    }
+
+    return NULL;
 }
 
 int main(void) {
-  pthread_t threads[NUM_THREAD];
-  pthread_cond_init(&cond, 0);
+    pthread_t threads[NUM_THREAD];
 
-  // Create threads to work
-  for (long i = 0; i < NUM_THREAD; i++) {
-    if (pthread_create(&threads[i], 0, ThreadFunc, (void*)i) < 0) {
-      printf("pthread_create error!\n");
-      return 0;
+    for (long i = 0; i < NUM_THREAD; i++) {
+        // create threads
+        if (pthread_create(&threads[i], 0, ThreadFunc, (void*)i) < 0) {
+            printf("pthread_create error!\n");
+            return 0;
+        }
+
+        // wait for thread sleep
+        while (thread_ret[i] != -1) {
+            pthread_yield();
+        }
     }
-  }
+    
+    while (1) {
+        scanf("%d", &range_start);
+        if (range_start == -1) {
+            is_done = true;
+            // Wake up all threads to terminate
+            pthread_mutex_lock(&mutex);
+            pthread_cond_broadcast(&cond);
+            pthread_mutex_unlock(&mutex);
+            break;
+        }
+        scanf("%d", &range_end);
 
-  while (1) {
-    // Input range
-    scanf("%d", &range_start);
-    if (range_start == -1) {
-      break;
+        for (int i = 0; i < NUM_THREAD; i++) {
+            thread_ret[i] = -1;
+        }
+        // Wake up all threads to work
+        pthread_mutex_lock(&mutex);
+        pthread_cond_broadcast(&cond);
+        pthread_mutex_unlock(&mutex);
+
+        // Wait for all threads to finish work
+        while (1) {
+            bool all_thread_done = true;
+            for (int i = 0; i < NUM_THREAD; i++) {
+                if (thread_ret[i] < 0) {
+                    all_thread_done = false;
+                    break;
+                }
+            }
+            if (all_thread_done) {
+                break;
+            }
+            pthread_yield();
+        }
+
+        // Collect the results
+        int cnt_prime = 0;
+        for (int i = 0; i < NUM_THREAD; i++) {
+            cnt_prime += thread_ret[i];
+        }
+        printf("number of prime: %d\n", cnt_prime);
     }
-    scanf("%d", &range_end);
 
-    // for waiting threads
-    for (long i = 0; i < NUM_THREAD; ++i) {
-      thread_ret[i] = -1;
-    }
-
-    // thread wake up
-    pthread_mutex_lock(&mutex);
-    pthread_cond_broadcast(&cond);
-    pthread_mutex_unlock(&mutex);
-
-
-    for (long i = 0; i < NUM_THREAD; ++i) {
-      while (thread_ret[i] == -1) {
-        pthread_yield();
-      }
-    }
-
-    // Collect results
-    int cnt_prime = 0;
+    // Wait threads end
     for (int i = 0; i < NUM_THREAD; i++) {
-      cnt_prime += thread_ret[i];
+        pthread_join(threads[i], NULL);
     }
-    printf("number of prime: %d\n", cnt_prime);
-  }
 
-  // erase thread
-  finished = 1;
-  pthread_mutex_lock(&mutex);
-  pthread_cond_broadcast(&cond);
-  pthread_mutex_unlock(&mutex);
-
-  for (int i = 0; i < NUM_THREAD; i++) {
-    pthread_join(threads[i], NULL);
-  }
-
-  return 0;
+    return 0;
 }
 
