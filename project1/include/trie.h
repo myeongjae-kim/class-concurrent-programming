@@ -1,8 +1,19 @@
 #define ALPHA_NUM 26
-#define THREAD_NUM 36
 
 #include <cstdint>
 #include <pthread.h>
+
+// for threads
+#define THREAD_NUM 3
+static const uint32_t SEARCH_ITER_NUM = 22000;
+
+typedef struct _ThreadArg {
+  struct Trie* trieRoot; // this value could be a global variable.
+  char* strQuery;
+  uint32_t searchLength;
+} ThreadArg;
+
+
 
 struct Trie
 {

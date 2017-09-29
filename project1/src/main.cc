@@ -4,6 +4,23 @@
 
 #define RESERVED_CAPACITY 1024
 
+
+
+
+extern pthread_cond_t cond;
+extern pthread_mutex_t condMutex;
+
+extern pthread_mutex_t vectorMutex;
+
+extern pthread_t threads[THREAD_NUM];
+extern ThreadArg threadArgs[THREAD_NUM];
+extern bool threadIsSleep[THREAD_NUM];
+
+extern void* searchSubstring(void* arg);
+
+extern bool finished;
+
+
 int main(void)
 {
   // TestTrie();
@@ -23,20 +40,49 @@ int main(void)
     insert(&head, (char*)strBuffer.c_str());
   }
 
+  // initializing cond and mutex
+  pthread_cond_init(&cond, NULL);
+  finished = false;
+
+  for (long i = 0; i < THREAD_NUM; i++) {
+    // create threads
+    threadIsSleep[i] = false;
+    if (pthread_create(&threads[i], 0, searchSubstring, (void*)i) < 0) {
+      std::cout << "thread create has been failed." << std::endl;
+      return 0;
+    }
+
+    // wait for thread sleep
+    while (threadIsSleep[i] == false) {
+      pthread_yield();
+    }
+  }
+
+
   std::cout << 'R' << std::endl;
 
   // To the end of stdin
   char cmd;
-  while (std::cin >> cmd) {
+  while (1) {
+    if (std::cin >> cmd == 0) {
+      finished = true;
+
+      // Wake up all threads to terminate
+      pthread_mutex_lock(&condMutex);
+      pthread_cond_broadcast(&cond);
+      pthread_mutex_unlock(&condMutex);
+      break;
+    }
+
     std::cin.get();
 
     // get argument
     getline(std::cin, strBuffer);
     switch (cmd) {
       case 'Q':
-#ifdef DBG
-        std::cout << "(main) call query" << std::endl;
-#endif
+
+
+
         searchAllPatterns(head, (char*)strBuffer.c_str());
         // setWasPrintedFalse(head);
         break;
@@ -60,11 +106,12 @@ int main(void)
     }
   }
 
-  if (search(head, (char*)"j")) {
-    printf("j is exist");
-  }
-
   // free other memories
+
+  // Wait threads end
+  for (int i = 0; i < THREAD_NUM; i++) {
+    pthread_join(threads[i], NULL);
+  }
 
   return 0;
 }

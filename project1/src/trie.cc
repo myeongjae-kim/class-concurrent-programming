@@ -60,17 +60,90 @@ int search(struct Trie* trieRoot, char* str)
 
 // struct for parallelizing
 
-typedef struct _ThreadArg {
-  struct Trie* trieRoot; // this value could be a global variable.
-  char* strQuery;
-  uint32_t searchLength;
-} ThreadArg;
-
+pthread_cond_t cond;
+pthread_mutex_t condMutex = PTHREAD_MUTEX_INITIALIZER;
 
 pthread_mutex_t vectorMutex = PTHREAD_MUTEX_INITIALIZER;
 
 pthread_t threads[THREAD_NUM];
 ThreadArg threadArgs[THREAD_NUM];
+bool threadIsSleep[THREAD_NUM];
+
+bool finished;
+
+
+void* searchSubstring(void* arg) {
+  long tid = (long)arg;
+
+  pthread_mutex_lock(&condMutex);
+  threadIsSleep[tid] = true;
+  pthread_cond_wait(&cond, &condMutex);
+  pthread_mutex_unlock(&condMutex);
+
+
+  while (!finished) {
+    if (threadIsSleep[tid] == false) {
+      ThreadArg data = threadArgs[uint64_t(tid)];
+
+      struct Trie* trieNode = data.trieRoot;
+      Answer answerBuffer;
+
+      std::string query(data.strQuery);
+
+      uint32_t searchCount = 0;
+      char* str;
+      while (searchCount < data.searchLength && *data.strQuery) {
+        str = data.strQuery;
+
+        while (*str) {
+          trieNode = trieNode->chars[*str - 'a'];
+
+          if (trieNode == NULL) {
+            trieNode = data.trieRoot;
+            break;
+          } else if (trieNode -> wordID) {
+            answerBuffer.startAdr = data.strQuery;
+            answerBuffer.length = (uint32_t)(str - data.strQuery) + 1;
+            answerBuffer.patternID = trieNode->wordID;
+
+            pthread_mutex_lock(&vectorMutex);
+            answers.push_back(answerBuffer);
+            pthread_mutex_unlock(&vectorMutex);
+          }
+
+          str++;
+        }
+
+        trieNode = data.trieRoot;
+        data.strQuery++;
+        searchCount++;
+      }
+    }
+
+
+
+sleep:
+    pthread_mutex_lock(&condMutex);
+    threadIsSleep[tid] = true;
+    pthread_cond_wait(&cond, &condMutex);
+    // Waked up
+    pthread_mutex_unlock(&condMutex);
+
+    if (threadIsSleep[tid] == true) {
+      if (finished) {
+        break;
+      } else {
+        goto sleep;
+      }
+    }
+  }
+
+
+  return nullptr;
+}
+
+
+
 
 // argument is dynamically allocated.
 void* searchForThread(void* tid) {
@@ -97,7 +170,6 @@ void* searchForThread(void* tid) {
         answerBuffer.length = (uint32_t)(str - data.strQuery) + 1;
         answerBuffer.patternID = trieNode->wordID;
 
-        // TODO: parallelize by using index.
         pthread_mutex_lock(&vectorMutex);
         answers.push_back(answerBuffer);
         pthread_mutex_unlock(&vectorMutex);
@@ -125,28 +197,81 @@ int searchAllPatterns(struct Trie* trieRoot, char* strQuery)
   printed.clear();
   answers.clear();
 
+  // prepare arguments for theads
 
-  static const int searchInterationNum = 22000;
-  uint32_t numberOfThreadRun = (strlen(strQuery) / searchInterationNum) + 1;
+  uint64_t tid = THREAD_NUM - 1;
+  uint32_t numberOfThreadRun = (strlen(strQuery) / SEARCH_ITER_NUM) + 1;
   for (uint64_t i = 0; i < numberOfThreadRun; ++i) {
-    uint64_t tid = i % THREAD_NUM;
-    pthread_join(threads[tid], NULL);
+    tid = i % THREAD_NUM;
     threadArgs[tid].strQuery = strQuery;
     threadArgs[tid].trieRoot = trieRoot;
-    threadArgs[tid].searchLength = searchInterationNum;
+    threadArgs[tid].searchLength = SEARCH_ITER_NUM;
 
-    pthread_create(&threads[tid], NULL, searchForThread, (void*)tid);
+    // full of threads. Run!
+    if (tid == THREAD_NUM - 1) {
 
-    strQuery += searchInterationNum;
+      // wake up threads
+      // thread reinit for start
+      for (int i = 0; i < THREAD_NUM; ++i) {
+        threadIsSleep[i] = false;
+      }
+
+      // Wake up all threads to work
+      pthread_mutex_lock(&condMutex);
+      pthread_cond_broadcast(&cond);
+      pthread_mutex_unlock(&condMutex);
+
+
+      // Wait for all threads to finish work
+      while (1) {
+        bool all_thread_done = true;
+        for (int i = 0; i < THREAD_NUM; i++) {
+          if (threadIsSleep[i] == false) {
+            all_thread_done = false;
+            break;
+          }
+        }
+        if (all_thread_done) {
+          break;
+        }
+        pthread_yield();
+      }
+
+    }
+
+    strQuery += SEARCH_ITER_NUM;
   }
 
-  //wait threads
-  //
-  for (int i = 0; i < THREAD_NUM; ++i) {
-    pthread_join(threads[i], NULL);
-    threads[i] = 0;
-  }
+  // there is left threads. Run them.
+  if (tid != THREAD_NUM - 1) {
 
+    // wake up threads
+    // thread reinit for start
+    for (uint32_t i = 0; i < tid + 1; ++i) {
+      threadIsSleep[i] = false;
+    }
+
+    // Wake up all threads to work
+    pthread_mutex_lock(&condMutex);
+    pthread_cond_broadcast(&cond);
+    pthread_mutex_unlock(&condMutex);
+
+
+    // Wait for all threads to finish work
+    while (1) {
+      bool all_thread_done = true;
+      for (uint32_t i = 0; i < tid + 1; i++) {
+        if (threadIsSleep[i] == false) {
+          all_thread_done = false;
+          break;
+        }
+      }
+      if (all_thread_done) {
+        break;
+      }
+      pthread_yield();
+    }
+  }
 
   // TODO:print
   // sort answer vector
@@ -207,7 +332,7 @@ int searchAllPatterns(struct Trie* trieRoot, char* strQuery)
 }
 
 
-int haveChildren(struct Trie* trieNode)
+int childExist(struct Trie* trieNode)
 {
   for (int i = 0; i < ALPHA_NUM; i++){
     if (trieNode->chars[i]){
@@ -223,18 +348,24 @@ int erase(struct Trie* *trieNode, char* str) {
     return 0;
   }
 
-  if (*str)
-  {
-    // Erase is so hard that I referenced this web site.
-    // base source code: http://www.techiedelight.com/trie-implementation-insert-search-delete/
-
+  if (*str) {
     // recursively find target node
-    if (*trieNode != NULL && (*trieNode)->chars[*str - 'a'] != NULL &&
+
+    // when node is not null
+    if (*trieNode != NULL &&
+
+        // and it has a node to target string
+        (*trieNode)->chars[*str - 'a'] != NULL &&
+
+        // find next character recursively and erase it.
         erase(&((*trieNode)->chars[*str - 'a']), str + 1) &&
+
+        // if current node is not the end of string
         (*trieNode)->wordID == 0) {
 
-      // character found
-      if (!haveChildren(*trieNode)) {
+
+      // erase node if it has no children node.
+      if (!childExist(*trieNode)) {
         free(*trieNode);
         (*trieNode) = NULL;
         return 1;
@@ -244,11 +375,14 @@ int erase(struct Trie* *trieNode, char* str) {
     }
   }
 
+  // this is a case
   if (*str == '\0' && (*trieNode)->wordID) {
-    if (!haveChildren(*trieNode)) {
+    if (!childExist(*trieNode)) {
       // when it is leaf node
       // remove
       free(*trieNode);
+
+      // remove
       (*trieNode) = NULL;
       return 1;
     } else {
