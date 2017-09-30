@@ -1,12 +1,14 @@
-#include <vector>
-#include <algorithm>
-#include <cstring>
 #include <iostream>
+
 #include <cstdlib>
 #include <cstdint>
+#include <cstring>
+#include <algorithm>
 #include "trie.h"
 
+#include <vector>
 #include <unordered_set>
+
 
 uint32_t patternID = 1;
 std::vector < Answer > answers;
@@ -18,7 +20,6 @@ struct Trie* createTrieNode() {
 	struct Trie* node = (struct Trie*)calloc(1, sizeof(*node));
 	return node;
 }
-
 
 void insert(struct Trie* *trieRoot, char* str)
 {
@@ -56,6 +57,14 @@ int search(struct Trie* trieRoot, char* str)
 
   return trieNode->wordID;
 }
+
+// struct for parallelizing
+
+typedef struct _ThreadArg {
+  struct Trie* trieRoot; // this value could be a global variable.
+  char* strQuery;
+  uint32_t searchLength;
+} ThreadArg;
 
 
 pthread_mutex_t vectorMutex = PTHREAD_MUTEX_INITIALIZER;
@@ -104,6 +113,7 @@ void* searchForThread(void* tid) {
   return nullptr;
 }
 
+
 int searchAllPatterns(struct Trie* trieRoot, char* strQuery)
 {
   // return 0 if Trie is empty
@@ -115,7 +125,7 @@ int searchAllPatterns(struct Trie* trieRoot, char* strQuery)
   answers.clear();
 
 
-  static const int searchInterationNum = 17000;
+  static const int searchInterationNum = 3000;
   uint32_t numberOfThreadRun = (strlen(strQuery) / searchInterationNum) + 1;
   for (uint64_t i = 0; i < numberOfThreadRun; ++i) {
     uint64_t tid = i % THREAD_NUM;
@@ -196,79 +206,13 @@ int searchAllPatterns(struct Trie* trieRoot, char* strQuery)
 }
 
 
-
-
-/* int searchAllPatterns(struct Trie* trieRoot, char* strQuery)
- * {
- *   // return 0 if Trie is empty
- *   if (trieRoot == NULL)
- *     return 0;
- *
- *   struct Trie* curr = trieRoot;
- *
- *   bool firstPrint = true;
- *   bool hasAnswer = false;
- *   printed.clear();
- *
- *   char* str;
- *   while (*strQuery) {
- *     str = strQuery;
- *
- *     while (*str)
- *     {
- *       // go to next node
- *       curr = curr->chars[*str - 'a'];
- *
- *       // if string is invalid (reached end of path in Trie)
- *       if (curr == NULL) {
- *         curr = trieRoot;
- *         break;
- *       } else if (curr -> wordID) {
- *         if (printed.find(curr->wordID) != printed.end()) {
- *           // do not print if it was printed.
- *         } else {
- *           printed.insert(curr->wordID);
- *           // print start
- *           if (!firstPrint) {
- *             std::cout << '|';
- *           }
- *
- *           char* print = strQuery;
- *           while(print <= str) {
- *             std::cout << *print;
- *             print++;
- *           }
- *           firstPrint = false;
- *           hasAnswer = true;
- *         }
- *       }
- *
- *       // move to next chars
- *       str++;
- *     }
- *
- *     curr = trieRoot;
- *     strQuery++;
- *   }
- *
- *
- *   if (hasAnswer == false) {
- *     std::cout << "-1";
- *   }
- *
- *   std::cout << '\n';
- *   // if current node is a leaf and we have reached the
- *   // end of the string, return 1
- *   return curr->wordID;
- * }
- *  */
-
-// returns 1 if given trieNode has any children
-int childExist(struct Trie* curr)
+int haveChildren(struct Trie* trieNode)
 {
-  for (int i = 0; i < ALPHA_NUM; i++)
-    if (curr->chars[i])
-      return 1;	// child found
+  for (int i = 0; i < ALPHA_NUM; i++){
+    if (trieNode->chars[i]){
+      return 1;
+    }
+  }
 
   return 0;
 }
@@ -278,24 +222,18 @@ int erase(struct Trie* *trieNode, char* str) {
     return 0;
   }
 
-  if (*str) {
+  if (*str)
+  {
+    // Erase is so hard that I referenced this web site.
+    // base source code: http://www.techiedelight.com/trie-implementation-insert-search-delete/
+
     // recursively find target node
-
-    // when node is not null
-    if (*trieNode != NULL &&
-
-        // and it has a node to target string
-        (*trieNode)->chars[*str - 'a'] != NULL &&
-
-        // find next chars recursively and erase it.
+    if (*trieNode != NULL && (*trieNode)->chars[*str - 'a'] != NULL &&
         erase(&((*trieNode)->chars[*str - 'a']), str + 1) &&
-
-        // if current node is not the end of string
         (*trieNode)->wordID == 0) {
 
-
-      // erase node if it has no children node.
-      if (!childExist(*trieNode)) {
+      // character found
+      if (!haveChildren(*trieNode)) {
         free(*trieNode);
         (*trieNode) = NULL;
         return 1;
@@ -305,14 +243,11 @@ int erase(struct Trie* *trieNode, char* str) {
     }
   }
 
-  // this is a case
   if (*str == '\0' && (*trieNode)->wordID) {
-    if (!childExist(*trieNode)) {
+    if (!haveChildren(*trieNode)) {
       // when it is leaf node
       // remove
       free(*trieNode);
-
-      // remove
       (*trieNode) = NULL;
       return 1;
     } else {
@@ -326,10 +261,7 @@ int erase(struct Trie* *trieNode, char* str) {
   return 0;
 }
 
-
-// Trie Implementation in C - Insertion, Searching and erase
-int TestTrie()
-{
+int TestTrie() {
   struct Trie* trieRoot = createTrieNode();
 
   insert(&trieRoot, (char*)"app");
