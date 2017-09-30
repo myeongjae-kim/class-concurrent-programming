@@ -3,11 +3,11 @@
 #include <cstdint>
 
 // for threads
-#define THREAD_NUM 36
+#define THREAD_NUM 50
 // static const uint32_t SEARCH_ITER_NUM = 16000;
 
 typedef struct _ThreadArg {
-  struct Trie* trieRoot; // this value could be a global variable.
+  // struct Trie* trieRoot; // this value could be a global variable.
   char* strQuery; // this value could be a global variable.
 } ThreadArg;
 
