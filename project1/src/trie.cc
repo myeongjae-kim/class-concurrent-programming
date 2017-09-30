@@ -59,28 +59,42 @@ int search(struct Trie* trieRoot, char* str)
 
 
 pthread_mutex_t vectorMutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t queryMutex = PTHREAD_MUTEX_INITIALIZER;
 
 pthread_t threads[THREAD_NUM];
 ThreadArg threadArgs[THREAD_NUM];
+
+char* globalStrQuery = nullptr;
+long globalIndex = 0;
+long globalQueryLen = 0;
 
 // argument is dynamically allocated.
 void* searchForThread(void* tid) {
   ThreadArg data = threadArgs[uint64_t(tid)];
 
-  struct Trie* trieNode = data.trieRoot;
   Answer answerBuffer;
 
-
-  uint32_t searchCount = 0;
   char* str;
-  while (searchCount < data.searchLength && *data.strQuery) {
+  struct Trie* trieNode;
+  while (1) {
+    trieNode = data.trieRoot;
+
+    pthread_mutex_lock(&queryMutex);
+    data.strQuery = globalStrQuery + globalIndex++;
+    if (globalIndex > globalQueryLen) {
+      pthread_mutex_unlock(&queryMutex);
+      break;
+    } else {
+      pthread_mutex_unlock(&queryMutex);
+    }
+
+    
     str = data.strQuery;
 
     while (*str) {
       trieNode = trieNode->chars[*str - 'a'];
 
       if (trieNode == NULL) {
-        trieNode = data.trieRoot;
         break;
       } else if (trieNode -> wordID) {
         answerBuffer.startAdr = data.strQuery;
@@ -95,10 +109,6 @@ void* searchForThread(void* tid) {
 
       str++;
     }
-
-    trieNode = data.trieRoot;
-    data.strQuery++;
-    searchCount++;
   }
 
   return nullptr;
@@ -111,26 +121,21 @@ int searchAllPatterns(struct Trie* trieRoot, char* strQuery)
     return 0;
   }
 
+  globalStrQuery = strQuery;
+  globalQueryLen = strlen(strQuery);
+
   printed.clear();
   answers.clear();
 
+  for (uint64_t i = 0; i < THREAD_NUM; ++i) {
+    pthread_join(threads[i], NULL);
+    threadArgs[i].strQuery = strQuery;
+    threadArgs[i].trieRoot = trieRoot;
 
-  static const int searchInterationNum = 17000;
-  uint32_t numberOfThreadRun = (strlen(strQuery) / searchInterationNum) + 1;
-  for (uint64_t i = 0; i < numberOfThreadRun; ++i) {
-    uint64_t tid = i % THREAD_NUM;
-    pthread_join(threads[tid], NULL);
-    threadArgs[tid].strQuery = strQuery;
-    threadArgs[tid].trieRoot = trieRoot;
-    threadArgs[tid].searchLength = searchInterationNum;
-
-    pthread_create(&threads[tid], NULL, searchForThread, (void*)tid);
-
-    strQuery += searchInterationNum;
+    pthread_create(&threads[i], NULL, searchForThread, (void*)i);
   }
 
   //wait threads
-  //
   for (int i = 0; i < THREAD_NUM; ++i) {
     pthread_join(threads[i], NULL);
     threads[i] = 0;
@@ -190,6 +195,10 @@ int searchAllPatterns(struct Trie* trieRoot, char* strQuery)
     std::cout << "-1";
   }
   std::cout << std::endl;
+
+  globalStrQuery = nullptr;
+  globalQueryLen = 0;
+  globalIndex = 0;
 
   //return has no meaning.
   return 1;
