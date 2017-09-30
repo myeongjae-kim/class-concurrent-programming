@@ -1,7 +1,6 @@
 #define ALPHA_NUM 26
 
 #include <cstdint>
-#include <pthread.h>
 
 // for threads
 /* #define THREAD_NUM 60

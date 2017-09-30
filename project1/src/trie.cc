@@ -1,12 +1,11 @@
 //base source code: http://www.techiedelight.com/trie-implementation-insert-search-delete/
 
-#include <cstdio>
+#include <iostream>
 #include <cstdlib>
 #include <cstdint>
 #include "trie.h"
 
 #include <unordered_set>
-
 
 uint32_t patternID = 1;
 
@@ -57,8 +56,6 @@ int search(struct Trie* trieRoot, char* str)
 }
 
 
-// Iterative function to search a string in Trie. It returns 1
-// if the string is found in the Trie, else it returns 0
 int searchAllPatterns(struct Trie* trieRoot, char* strQuery)
 {
 	// return 0 if Trie is empty
@@ -77,7 +74,7 @@ int searchAllPatterns(struct Trie* trieRoot, char* strQuery)
 
     while (*str)
     {
-      // go to next trieNode
+      // go to next node
       curr = curr->chars[*str - 'a'];
 
       // if string is invalid (reached end of path in Trie)
@@ -91,12 +88,12 @@ int searchAllPatterns(struct Trie* trieRoot, char* strQuery)
           printed.insert(curr->wordID);
           // print start
           if (!firstPrint) {
-            putchar('|');
+            std::cout << '|';
           }
 
           char* print = strQuery;
           while(print <= str) {
-            putchar(*print);
+            std::cout << *print;
             print++;
           }
           firstPrint = false;
@@ -114,18 +111,18 @@ int searchAllPatterns(struct Trie* trieRoot, char* strQuery)
 
 
   if (hasAnswer == false) {
-    printf("-1");
+    std::cout << "-1";
   }
 
-  putchar('\n');
-  // if current trieNode is a leaf and we have reached the
+  std::cout << '\n';
+  // if current node is a leaf and we have reached the
   // end of the string, return 1
   return curr->wordID;
 }
 
 
 // returns 1 if given trieNode has any children
-int haveChildren(struct Trie* curr)
+int childExist(struct Trie* curr)
 {
   for (int i = 0; i < ALPHA_NUM; i++)
     if (curr->chars[i])
@@ -134,119 +131,64 @@ int haveChildren(struct Trie* curr)
   return 0;
 }
 
-// Recursive function to delete a string in Trie.
-int erase(struct Trie* *curr, char* str)
-{
-  // return if Trie is empty
-  if (*curr == NULL)
+int erase(struct Trie* *trieNode, char* str) {
+  if (*trieNode == NULL){
     return 0;
+  }
 
-  // if we have not reached the end of the string
-  if (*str)
-  {
-    // recurse for the trieNode corresponding to next chars in
-    // the string and if it returns 1, delete current trieNode
-    // (if it is non-leaf)
-    if (*curr != NULL && (*curr)->chars[*str - 'a'] != NULL &&
-        erase(&((*curr)->chars[*str - 'a']), str + 1) &&
-        (*curr)->wordID == 0)
-    {
-      if (!haveChildren(*curr))
-      {
-        free(*curr);
-        (*curr) = NULL;
+  if (*str) {
+    // recursively find target node
+
+    // when node is not null
+    if (*trieNode != NULL &&
+
+        // and it has a node to target string
+        (*trieNode)->chars[*str - 'a'] != NULL &&
+
+        // find next chars recursively and erase it.
+        erase(&((*trieNode)->chars[*str - 'a']), str + 1) &&
+
+        // if current node is not the end of string
+        (*trieNode)->wordID == 0) {
+
+
+      // erase node if it has no children node.
+      if (!childExist(*trieNode)) {
+        free(*trieNode);
+        (*trieNode) = NULL;
         return 1;
-      }
-      else {
+      } else {
         return 0;
       }
     }
   }
 
-  // if we have reached the end of the string
-  if (*str == '\0' && (*curr)->wordID)
-  {
-    // if current trieNode is a leaf trieNode and don't have any children
-    if (!haveChildren(*curr))
-    {
-      free(*curr); // delete current trieNode
-      (*curr) = NULL;
-      return 1; // delete non-leaf parent trieNodes
-    }
+  // this is a case
+  if (*str == '\0' && (*trieNode)->wordID) {
+    if (!childExist(*trieNode)) {
+      // when it is leaf node
+      // remove
+      free(*trieNode);
 
-    // if current trieNode is a leaf trieNode and have children
-    else
-    {
-      // mark current trieNode as non-leaf trieNode (DON'T DELETE IT)
-      (*curr)->wordID = 0;
-      return 0;	   // don't delete its parent trieNodes
+      // remove
+      (*trieNode) = NULL;
+      return 1;
+    } else {
+      // when it is not leaf node
+      // do not remove. just makes wordID zero.
+      (*trieNode)->wordID = 0;
+      return 0;
     }
   }
 
   return 0;
 }
 
-/* void setWasPrintedFalse(struct Trie* trieRoot) {
- *   // do it recursively
- *
- *   // base case
- *   if (trieRoot == NULL) {
- *     return;
- *   }
- *
- *  if (trieRoot -> wordID) {
- *     trieRoot->wasPrinted = 0;
- *   }
- *
- *   for (uint8_t i = 0; i < ALPHA_NUM; ++i) {
- *     struct Trie* child = trieRoot->chars[i];
- *     if (child != NULL) {
- *       setWasPrintedFalse(child);
- *     }
- *   }
- * } */
 
 // Trie Implementation in C - Insertion, Searching and erase
 int TestTrie()
 {
   struct Trie* trieRoot = createTrieNode();
-
-  /*   insert(&trieRoot, "hello");
-   *   printf("%d ", search(trieRoot, "hello"));   	// print 1
-   *
-   *   insert(&trieRoot, "helloworld");
-   *   printf("%d ", search(trieRoot, "helloworld"));  // print 1
-   *
-   *   printf("%d ", search(trieRoot, "helll"));   	// print 0 (Not present)
-   *
-   *   insert(&trieRoot, "hell");
-   *   printf("%d ", search(trieRoot, "hell"));		// print 1
-   *
-   *   insert(&trieRoot, "h");
-   *   printf("%d \n", search(trieRoot, "h")); 		// print 1 + newline
-   *
-   *   erase(&trieRoot, "hello");
-   *   printf("%d ", search(trieRoot, "hello"));   	// print 0 (hello deleted)
-   *   printf("%d ", search(trieRoot, "helloworld"));  // print 1
-   *   printf("%d \n", search(trieRoot, "hell"));  	// print 1 + newline
-   *
-   *   erase(&trieRoot, "h");
-   *   printf("%d ", search(trieRoot, "h"));   		// print 0 (h deleted)
-   *   printf("%d ", search(trieRoot, "hell"));		// print 1
-   *   printf("%d\n", search(trieRoot, "helloworld")); // print 1 + newline
-   *
-   *   erase(&trieRoot, "helloworld");
-   *   printf("%d ", search(trieRoot, "helloworld"));  // print 0
-   *   printf("%d ", search(trieRoot, "hell"));		// print 1
-   *
-   *   erase(&trieRoot, "hell");
-   *   printf("%d\n", search(trieRoot, "hell"));   	// print 0 + newline
-   *
-   *   if (trieRoot == NULL)
-   *     printf("Trie empty!!\n");   			// Trie is empty now
-   *
-   *   printf("%d ", search(trieRoot, "hell"));		// print 0
-   *  */
 
   insert(&trieRoot, (char*)"app");
   insert(&trieRoot, (char*)"apple");
