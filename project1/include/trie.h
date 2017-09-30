@@ -3,7 +3,7 @@
 #include <cstdint>
 
 // for threads
-#define THREAD_NUM 50
+#define THREAD_NUM 35
 // static const uint32_t SEARCH_ITER_NUM = 16000;
 
 typedef struct _ThreadArg {
