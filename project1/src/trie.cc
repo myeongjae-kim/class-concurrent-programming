@@ -68,6 +68,8 @@ char* globalStrQuery = nullptr;
 long globalIndex = 0;
 long globalQueryLen = 0;
 
+extern struct Trie *globalTrieRoot;
+
 // argument is dynamically allocated.
 void* searchForThread(void* tid) {
   ThreadArg data = threadArgs[uint64_t(tid)];
@@ -76,17 +78,17 @@ void* searchForThread(void* tid) {
 
   char* str;
   struct Trie* trieNode;
-  while (1) {
-    trieNode = data.trieRoot;
 
-    pthread_mutex_lock(&queryMutex);
-    data.strQuery = globalStrQuery + globalIndex++;
-    if (globalIndex > globalQueryLen) {
-      pthread_mutex_unlock(&queryMutex);
+  data.strQuery -= THREAD_NUM;
+  while (1) {
+    trieNode = globalTrieRoot;
+
+
+    data.strQuery += THREAD_NUM;
+    if (data.strQuery >= globalStrQuery + globalQueryLen) {
       break;
-    } else {
-      pthread_mutex_unlock(&queryMutex);
     }
+    // std::cout << "(thread " << (long)tid << ") strQueryAdr: " << (long)data.strQuery << std::endl;
 
     
     str = data.strQuery;
@@ -129,9 +131,8 @@ int searchAllPatterns(struct Trie* trieRoot, char* strQuery)
 
   for (uint64_t i = 0; i < THREAD_NUM; ++i) {
     pthread_join(threads[i], NULL);
-    threadArgs[i].strQuery = strQuery;
     threadArgs[i].trieRoot = trieRoot;
-
+    threadArgs[i].strQuery = globalStrQuery + i;
     pthread_create(&threads[i], NULL, searchForThread, (void*)i);
   }
 

@@ -4,11 +4,13 @@
 
 #define RESERVED_CAPACITY 1024
 
+ struct Trie *globalTrieRoot;
+
 int main(void)
 {
   // TestTrie();
 
-  // std::ios::sync_with_stdio(false);
+  std::ios::sync_with_stdio(false);
 
   int numberOfStrings = 0;
   std::cin >> numberOfStrings;
@@ -18,6 +20,7 @@ int main(void)
   strBuffer.reserve(RESERVED_CAPACITY);
 
   struct Trie* head = createTrieNode();
+  globalTrieRoot = head;
   for (int i = 0; i < numberOfStrings; ++i) {
     std::cin >> strBuffer;
     insert(&head, (char*)strBuffer.c_str());
