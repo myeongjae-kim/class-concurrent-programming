@@ -1,414 +1,280 @@
-#include <iostream>
+//base source code: http://www.techiedelight.com/trie-implementation-insert-search-delete/
 
+#include <cstdio>
 #include <cstdlib>
 #include <cstdint>
-#include <cstring>
-#include <algorithm>
 #include "trie.h"
 
-#include <vector>
 #include <unordered_set>
 
 
 uint32_t patternID = 1;
-std::vector < Answer > answers;
 
 std::unordered_set <uint32_t> printed;
 
-struct Trie* createTrieNode() {
-  // create new node
-	struct Trie* node = (struct Trie*)calloc(1, sizeof(*node));
+// Function that returns a new Trie node
+struct Trie* getNewTrieNode()
+{
+	struct Trie* node = (struct Trie*)malloc(sizeof(struct Trie));
+	node->isLeaf = 0;
+
+	for (int i = 0; i < CHAR_SIZE; i++)
+		node->character[i] = NULL;
+
 	return node;
 }
 
-void insert(struct Trie* *trieRoot, char* str)
+// Iterative function to insert a string in Trie.
+void insert(struct Trie* *head, char* str)
 {
-	struct Trie* trieNode = *trieRoot;
+	// start from root node
+	struct Trie* curr = *head;
 	while (*str)
 	{
-		if (trieNode->chars[*str - 'a'] == NULL){
-			trieNode->chars[*str - 'a'] = createTrieNode();
-    }
+		// create a new node if path doesn't exists
+		if (curr->character[*str - 'a'] == NULL)
+			curr->character[*str - 'a'] = getNewTrieNode();
 
-		trieNode = trieNode->chars[*str - 'a'];
+		// go to next node
+		curr = curr->character[*str - 'a'];
+
+		// move to next character
 		str++;
 	}
 
-	trieNode->wordID = patternID++;
+	// mark current node as leaf
+	// curr->isLeaf = 1;
+	curr->isLeaf = patternID++;
 }
 
-int search(struct Trie* trieRoot, char* str)
+// Iterative function to search a string in Trie. It returns 1
+// if the string is found in the Trie, else it returns 0
+int search(struct Trie* head, char* str)
 {
-  if (trieRoot == NULL){
-    return 0;
-  }
+	// return 0 if Trie is empty
+	if (head == NULL)
+		return 0;
 
-  struct Trie* trieNode = trieRoot;
-  while (*str)
-  {
-    trieNode = trieNode->chars[*str - 'a'];
+	struct Trie* curr = head;
+	while (*str)
+	{
+		// go to next node
+		curr = curr->character[*str - 'a'];
 
-    if (trieNode == NULL) {
-      return 0;
-    }
+		// if string is invalid (reached end of path in Trie)
+		if (curr == NULL)
+			return 0;
 
-    str++;
-  }
+		// move to next character
+		str++;
+	}
 
-  return trieNode->wordID;
+	// if current node is a leaf and we have reached the
+	// end of the string, return 1
+	return curr->isLeaf;
 }
 
-// struct for parallelizing
+// Iterative function to search a string in Trie. It returns 1
+// if the string is found in the Trie, else it returns 0
+int searchAllPatterns(struct Trie* head, char* strQuery)
+{
+	// return 0 if Trie is empty
+	if (head == NULL)
+		return 0;
 
-pthread_cond_t cond;
-pthread_mutex_t condMutex = PTHREAD_MUTEX_INITIALIZER;
+	struct Trie* curr = head;
 
-pthread_mutex_t vectorMutex = PTHREAD_MUTEX_INITIALIZER;
+  bool firstPrint = true;
+  bool hasAnswer = false;
+  printed.clear();
 
-pthread_t threads[THREAD_NUM];
-ThreadArg threadArgs[THREAD_NUM];
-bool threadIsSleep[THREAD_NUM];
+  char* str;
+  while (*strQuery) {
+    str = strQuery;
 
-bool finished;
+    while (*str)
+    {
+      // go to next node
+      curr = curr->character[*str - 'a'];
 
-
-void* searchSubstring(void* arg) {
-  long tid = (long)arg;
-
-  pthread_mutex_lock(&condMutex);
-  threadIsSleep[tid] = true;
-  pthread_cond_wait(&cond, &condMutex);
-  pthread_mutex_unlock(&condMutex);
-
-
-  while (!finished) {
-    if (threadIsSleep[tid] == false) {
-      ThreadArg data = threadArgs[uint64_t(tid)];
-
-      struct Trie* trieNode = data.trieRoot;
-      Answer answerBuffer;
-
-      std::string query(data.strQuery);
-
-      uint32_t searchCount = 0;
-      char* str;
-      while (searchCount < data.searchLength && *data.strQuery) {
-        str = data.strQuery;
-
-        while (*str) {
-          trieNode = trieNode->chars[*str - 'a'];
-
-          if (trieNode == NULL) {
-            trieNode = data.trieRoot;
-            break;
-          } else if (trieNode -> wordID) {
-            answerBuffer.startAdr = data.strQuery;
-            answerBuffer.length = (uint32_t)(str - data.strQuery) + 1;
-            answerBuffer.patternID = trieNode->wordID;
-
-            pthread_mutex_lock(&vectorMutex);
-            answers.push_back(answerBuffer);
-            pthread_mutex_unlock(&vectorMutex);
+      // if string is invalid (reached end of path in Trie)
+      if (curr == NULL) {
+        curr = head;
+        break;
+      } else if (curr -> isLeaf) {
+        if (printed.find(curr->isLeaf) != printed.end()) {
+          // do not print if it was printed.
+        } else {
+          printed.insert(curr->isLeaf);
+          // print start
+          if (!firstPrint) {
+            putchar('|');
           }
 
-          str++;
+          char* print = strQuery;
+          while(print <= str) {
+            putchar(*print);
+            print++;
+          }
+          firstPrint = false;
+          hasAnswer = true;
         }
-
-        trieNode = data.trieRoot;
-        data.strQuery++;
-        searchCount++;
-      }
-    }
-
-
-
-sleep:
-    pthread_mutex_lock(&condMutex);
-    threadIsSleep[tid] = true;
-    pthread_cond_wait(&cond, &condMutex);
-    // Waked up
-    pthread_mutex_unlock(&condMutex);
-
-    if (threadIsSleep[tid] == true) {
-      if (finished) {
-        break;
-      } else {
-        goto sleep;
-      }
-    }
-  }
-
-
-  return nullptr;
-}
-
-
-
-
-// argument is dynamically allocated.
-void* searchForThread(void* tid) {
-  ThreadArg data = threadArgs[uint64_t(tid)];
-
-  struct Trie* trieNode = data.trieRoot;
-  Answer answerBuffer;
-
-  std::string query(data.strQuery);
-
-  uint32_t searchCount = 0;
-  char* str;
-  while (searchCount < data.searchLength && *data.strQuery) {
-    str = data.strQuery;
-
-    while (*str) {
-      trieNode = trieNode->chars[*str - 'a'];
-
-      if (trieNode == NULL) {
-        trieNode = data.trieRoot;
-        break;
-      } else if (trieNode -> wordID) {
-        answerBuffer.startAdr = data.strQuery;
-        answerBuffer.length = (uint32_t)(str - data.strQuery) + 1;
-        answerBuffer.patternID = trieNode->wordID;
-
-        pthread_mutex_lock(&vectorMutex);
-        answers.push_back(answerBuffer);
-        pthread_mutex_unlock(&vectorMutex);
       }
 
+      // move to next character
       str++;
     }
 
-    trieNode = data.trieRoot;
-    data.strQuery++;
-    searchCount++;
+    curr = head;
+    strQuery++;
   }
 
-  return nullptr;
+
+  if (hasAnswer == false) {
+    printf("-1");
+  }
+
+  putchar('\n');
+  // if current node is a leaf and we have reached the
+  // end of the string, return 1
+  return curr->isLeaf;
 }
 
 
-int searchAllPatterns(struct Trie* trieRoot, char* strQuery)
+// returns 1 if given node has any children
+int haveChildren(struct Trie* curr)
 {
-  // return 0 if Trie is empty
-  if (trieRoot == NULL){
-    return 0;
-  }
-
-  printed.clear();
-  answers.clear();
-
-  // prepare arguments for theads
-
-  uint64_t tid = THREAD_NUM - 1;
-  uint32_t numberOfThreadRun = (strlen(strQuery) / SEARCH_ITER_NUM) + 1;
-  for (uint64_t i = 0; i < numberOfThreadRun; ++i) {
-    tid = i % THREAD_NUM;
-    threadArgs[tid].strQuery = strQuery;
-    threadArgs[tid].trieRoot = trieRoot;
-    threadArgs[tid].searchLength = SEARCH_ITER_NUM;
-
-    // full of threads. Run!
-    if (tid == THREAD_NUM - 1) {
-
-      // wake up threads
-      // thread reinit for start
-      for (int i = 0; i < THREAD_NUM; ++i) {
-        threadIsSleep[i] = false;
-      }
-
-      // Wake up all threads to work
-      pthread_mutex_lock(&condMutex);
-      pthread_cond_broadcast(&cond);
-      pthread_mutex_unlock(&condMutex);
-
-
-      // Wait for all threads to finish work
-      while (1) {
-        bool all_thread_done = true;
-        for (int i = 0; i < THREAD_NUM; i++) {
-          if (threadIsSleep[i] == false) {
-            all_thread_done = false;
-            break;
-          }
-        }
-        if (all_thread_done) {
-          break;
-        }
-        pthread_yield();
-      }
-
-    }
-
-    strQuery += SEARCH_ITER_NUM;
-  }
-
-  // there is left threads. Run them.
-  if (tid != THREAD_NUM - 1) {
-
-    // wake up threads
-    // thread reinit for start
-    for (uint32_t i = 0; i < tid + 1; ++i) {
-      threadIsSleep[i] = false;
-    }
-
-    // Wake up all threads to work
-    pthread_mutex_lock(&condMutex);
-    pthread_cond_broadcast(&cond);
-    pthread_mutex_unlock(&condMutex);
-
-
-    // Wait for all threads to finish work
-    while (1) {
-      bool all_thread_done = true;
-      for (uint32_t i = 0; i < tid + 1; i++) {
-        if (threadIsSleep[i] == false) {
-          all_thread_done = false;
-          break;
-        }
-      }
-      if (all_thread_done) {
-        break;
-      }
-      pthread_yield();
-    }
-  }
-
-  // TODO:print
-  // sort answer vector
-  // check whether the answer was printed
-  // if answer is not printed, print answer and add to printed set
-  // clear printed set and answer vector
-
-
-  char* printingTarget;
-  uint32_t size = answers.size();
-  if (size != 0) {
-    // answer exists
-    std::sort(answers.begin(), answers.end(), [](Answer lhs, Answer rhs){
-        if (lhs.startAdr < rhs.startAdr) {
-        return true;
-        } else if (lhs.startAdr > rhs.startAdr) {
-        return false;
-        } else {
-        if (lhs.length < rhs.length) {
-        return true;
-        } else {
-        return false;
-        }
-        }
-        });
-
-    //print firstone
-    Answer& tempAnswer = answers[0];
-    printed.insert(tempAnswer.patternID);
-    printingTarget = tempAnswer.startAdr;
-    for (uint32_t i = 0; i < tempAnswer.length; ++i) {
-      std::cout << *printingTarget;
-      printingTarget++;
-    }
-
-    //print the others
-    for (uint32_t i = 1; i < size; ++i) {
-      Answer& answer = answers[i];
-      if (printed.find(answer.patternID) == printed.end()) {
-        printed.insert(answer.patternID);
-        printingTarget = answer.startAdr;
-        std::cout << '|';
-        for (uint32_t j = 0; j < answer.length; ++j) {
-          std::cout << *printingTarget;
-          printingTarget++;
-        }
-      }
-    }
-
-  } else {
-    // no answer
-    std::cout << "-1";
-  }
-  std::cout << std::endl;
-
-  //return has no meaning.
-  return 1;
-}
-
-
-int childExist(struct Trie* trieNode)
-{
-  for (int i = 0; i < ALPHA_NUM; i++){
-    if (trieNode->chars[i]){
-      return 1;
-    }
-  }
+  for (int i = 0; i < CHAR_SIZE; i++)
+    if (curr->character[i])
+      return 1;	// child found
 
   return 0;
 }
 
-int erase(struct Trie* *trieNode, char* str) {
-  if (*trieNode == NULL){
+// Recursive function to delete a string in Trie.
+int deletion(struct Trie* *curr, char* str)
+{
+  // return if Trie is empty
+  if (*curr == NULL)
     return 0;
-  }
 
-  if (*str) {
-    // recursively find target node
-
-    // when node is not null
-    if (*trieNode != NULL &&
-
-        // and it has a node to target string
-        (*trieNode)->chars[*str - 'a'] != NULL &&
-
-        // find next character recursively and erase it.
-        erase(&((*trieNode)->chars[*str - 'a']), str + 1) &&
-
-        // if current node is not the end of string
-        (*trieNode)->wordID == 0) {
-
-
-      // erase node if it has no children node.
-      if (!childExist(*trieNode)) {
-        free(*trieNode);
-        (*trieNode) = NULL;
+  // if we have not reached the end of the string
+  if (*str)
+  {
+    // recurse for the node corresponding to next character in
+    // the string and if it returns 1, delete current node
+    // (if it is non-leaf)
+    if (*curr != NULL && (*curr)->character[*str - 'a'] != NULL &&
+        deletion(&((*curr)->character[*str - 'a']), str + 1) &&
+        (*curr)->isLeaf == 0)
+    {
+      if (!haveChildren(*curr))
+      {
+        free(*curr);
+        (*curr) = NULL;
         return 1;
-      } else {
+      }
+      else {
         return 0;
       }
     }
   }
 
-  // this is a case
-  if (*str == '\0' && (*trieNode)->wordID) {
-    if (!childExist(*trieNode)) {
-      // when it is leaf node
-      // remove
-      free(*trieNode);
+  // if we have reached the end of the string
+  if (*str == '\0' && (*curr)->isLeaf)
+  {
+    // if current node is a leaf node and don't have any children
+    if (!haveChildren(*curr))
+    {
+      free(*curr); // delete current node
+      (*curr) = NULL;
+      return 1; // delete non-leaf parent nodes
+    }
 
-      // remove
-      (*trieNode) = NULL;
-      return 1;
-    } else {
-      // when it is not leaf node
-      // do not remove. just makes wordID zero.
-      (*trieNode)->wordID = 0;
-      return 0;
+    // if current node is a leaf node and have children
+    else
+    {
+      // mark current node as non-leaf node (DON'T DELETE IT)
+      (*curr)->isLeaf = 0;
+      return 0;	   // don't delete its parent nodes
     }
   }
 
   return 0;
 }
 
-int TestTrie() {
-  struct Trie* trieRoot = createTrieNode();
+/* void setWasPrintedFalse(struct Trie* head) {
+ *   // do it recursively
+ *
+ *   // base case
+ *   if (head == NULL) {
+ *     return;
+ *   }
+ *
+ *  if (head -> isLeaf) {
+ *     head->wasPrinted = 0;
+ *   }
+ *
+ *   for (uint8_t i = 0; i < CHAR_SIZE; ++i) {
+ *     struct Trie* child = head->character[i];
+ *     if (child != NULL) {
+ *       setWasPrintedFalse(child);
+ *     }
+ *   }
+ * } */
 
-  insert(&trieRoot, (char*)"app");
-  insert(&trieRoot, (char*)"apple");
-  insert(&trieRoot, (char*)"pineapple");
-  insert(&trieRoot, (char*)"leap");
+// Trie Implementation in C - Insertion, Searching and Deletion
+int TestTrie()
+{
+  struct Trie* head = getNewTrieNode();
 
-  searchAllPatterns(trieRoot, (char*)"apple");
-  // setWasPrintedFalse(trieRoot);
-  searchAllPatterns(trieRoot, (char*)"pineapple");
-  // setWasPrintedFalse(trieRoot);
-  // searchAllPatterns(trieRoot, "penpineappleapplepen");
+  /*   insert(&head, "hello");
+   *   printf("%d ", search(head, "hello"));   	// print 1
+   *
+   *   insert(&head, "helloworld");
+   *   printf("%d ", search(head, "helloworld"));  // print 1
+   *
+   *   printf("%d ", search(head, "helll"));   	// print 0 (Not present)
+   *
+   *   insert(&head, "hell");
+   *   printf("%d ", search(head, "hell"));		// print 1
+   *
+   *   insert(&head, "h");
+   *   printf("%d \n", search(head, "h")); 		// print 1 + newline
+   *
+   *   deletion(&head, "hello");
+   *   printf("%d ", search(head, "hello"));   	// print 0 (hello deleted)
+   *   printf("%d ", search(head, "helloworld"));  // print 1
+   *   printf("%d \n", search(head, "hell"));  	// print 1 + newline
+   *
+   *   deletion(&head, "h");
+   *   printf("%d ", search(head, "h"));   		// print 0 (h deleted)
+   *   printf("%d ", search(head, "hell"));		// print 1
+   *   printf("%d\n", search(head, "helloworld")); // print 1 + newline
+   *
+   *   deletion(&head, "helloworld");
+   *   printf("%d ", search(head, "helloworld"));  // print 0
+   *   printf("%d ", search(head, "hell"));		// print 1
+   *
+   *   deletion(&head, "hell");
+   *   printf("%d\n", search(head, "hell"));   	// print 0 + newline
+   *
+   *   if (head == NULL)
+   *     printf("Trie empty!!\n");   			// Trie is empty now
+   *
+   *   printf("%d ", search(head, "hell"));		// print 0
+   *  */
+
+  insert(&head, (char*)"app");
+  insert(&head, (char*)"apple");
+  insert(&head, (char*)"pineapple");
+  insert(&head, (char*)"leap");
+
+  searchAllPatterns(head, (char*)"apple");
+  // setWasPrintedFalse(head);
+  searchAllPatterns(head, (char*)"pineapple");
+  // setWasPrintedFalse(head);
+  // searchAllPatterns(head, "penpineappleapplepen");
 
 
   return 0;
