@@ -1,4 +1,3 @@
-#include <stdio.h>
 #include "trie.h"
 
 #include <iostream>
@@ -9,7 +8,7 @@ int main(void)
 {
   // TestTrie();
 
-  // std::ios::sync_with_stdio(false);
+  std::ios::sync_with_stdio(false);
 
   int numberOfStrings = 0;
   std::cin >> numberOfStrings;
@@ -28,16 +27,20 @@ int main(void)
 
   // To the end of stdin
   char cmd;
-  while (std::cin >> cmd) {
+  while (1) {
+    if ( !(std::cin >> cmd)) {
+      break;
+    }
+
     std::cin.get();
 
     // get argument
     getline(std::cin, strBuffer);
     switch (cmd) {
       case 'Q':
-#ifdef DBG
-        std::cout << "(main) call query" << std::endl;
-#endif
+
+
+
         searchAllPatterns(head, (char*)strBuffer.c_str());
         // setWasPrintedFalse(head);
         break;
@@ -62,6 +65,8 @@ int main(void)
   }
 
   // free other memories
+
+  // Wait threads end
 
   return 0;
 }
