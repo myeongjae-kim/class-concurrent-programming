@@ -1,12 +1,14 @@
-#include <vector>
-#include <algorithm>
-#include <cstring>
 #include <iostream>
+
 #include <cstdlib>
 #include <cstdint>
+#include <cstring>
+#include <algorithm>
 #include "trie.h"
 
+#include <vector>
 #include <unordered_set>
+
 
 uint32_t patternID = 1;
 std::vector < Answer > answers;
@@ -18,7 +20,6 @@ struct Trie* createTrieNode() {
 	struct Trie* node = (struct Trie*)calloc(1, sizeof(*node));
 	return node;
 }
-
 
 void insert(struct Trie* *trieRoot, char* str)
 {
@@ -57,60 +58,134 @@ int search(struct Trie* trieRoot, char* str)
   return trieNode->wordID;
 }
 
+// struct for parallelizing
 
-// pthread_mutex_t vectorMutex = PTHREAD_MUTEX_INITIALIZER;
-// pthread_mutex_t queryMutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t cond;
+pthread_mutex_t condMutex = PTHREAD_MUTEX_INITIALIZER;
+
+pthread_mutex_t vectorMutex = PTHREAD_MUTEX_INITIALIZER;
 
 pthread_t threads[THREAD_NUM];
 ThreadArg threadArgs[THREAD_NUM];
+bool threadIsSleep[THREAD_NUM];
 
-char* globalStrQuery = nullptr;
-long globalIndex = 0;
-long globalQueryLen = 0;
+bool finished;
 
-extern struct Trie *globalTrieRoot;
-std::vector< Answer > localAnswers[THREAD_NUM];
+
+void* searchSubstring(void* arg) {
+  long tid = (long)arg;
+
+  pthread_mutex_lock(&condMutex);
+  threadIsSleep[tid] = true;
+  pthread_cond_wait(&cond, &condMutex);
+  pthread_mutex_unlock(&condMutex);
+
+
+  while (!finished) {
+    if (threadIsSleep[tid] == false && threadArgs[tid].strQuery) {
+      ThreadArg data = threadArgs[uint64_t(tid)];
+
+      struct Trie* trieNode = data.trieRoot;
+      Answer answerBuffer;
+
+      std::string query(data.strQuery);
+
+      uint32_t searchCount = 0;
+      char* str;
+      while (searchCount < data.searchLength && *data.strQuery) {
+        str = data.strQuery;
+
+        while (*str) {
+          trieNode = trieNode->chars[*str - 'a'];
+
+          if (trieNode == NULL) {
+            trieNode = data.trieRoot;
+            break;
+          } else if (trieNode -> wordID) {
+            answerBuffer.startAdr = data.strQuery;
+            answerBuffer.length = (uint32_t)(str - data.strQuery) + 1;
+            answerBuffer.patternID = trieNode->wordID;
+
+            pthread_mutex_lock(&vectorMutex);
+            answers.push_back(answerBuffer);
+            pthread_mutex_unlock(&vectorMutex);
+          }
+
+          str++;
+        }
+
+        trieNode = data.trieRoot;
+        data.strQuery++;
+        searchCount++;
+      }
+    }
+
+
+
+sleep:
+    pthread_mutex_lock(&condMutex);
+    threadIsSleep[tid] = true;
+    pthread_cond_wait(&cond, &condMutex);
+    // Waked up
+    pthread_mutex_unlock(&condMutex);
+
+    if (threadIsSleep[tid] == true) {
+      if (finished) {
+        break;
+      } else {
+        goto sleep;
+      }
+    }
+  }
+
+
+  return nullptr;
+}
+
+
+
 
 // argument is dynamically allocated.
-void* searchForThread(void* arg) {
-  long tid = (long)arg;
-  ThreadArg data = threadArgs[tid];
+void* searchForThread(void* tid) {
+  ThreadArg data = threadArgs[uint64_t(tid)];
 
+  struct Trie* trieNode = data.trieRoot;
   Answer answerBuffer;
-  localAnswers[tid].clear();
 
+  std::string query(data.strQuery);
+
+  uint32_t searchCount = 0;
   char* str;
-  struct Trie* trieNode;
-
-  // data.strQuery -= THREAD_NUM;
-  while (data.strQuery < globalStrQuery + globalQueryLen) {
-    trieNode = globalTrieRoot;
-
-    // std::cout << "(thread " << (long)tid << ") strQueryAdr: " << (long)data.strQuery << std::endl;
-    
+  while (searchCount < data.searchLength && *data.strQuery) {
     str = data.strQuery;
 
     while (*str) {
       trieNode = trieNode->chars[*str - 'a'];
 
       if (trieNode == NULL) {
+        trieNode = data.trieRoot;
         break;
       } else if (trieNode -> wordID) {
         answerBuffer.startAdr = data.strQuery;
         answerBuffer.length = (uint32_t)(str - data.strQuery) + 1;
         answerBuffer.patternID = trieNode->wordID;
 
-        // TODO: parallelize by using index.
-        localAnswers[tid].push_back(answerBuffer);
+        pthread_mutex_lock(&vectorMutex);
+        answers.push_back(answerBuffer);
+        pthread_mutex_unlock(&vectorMutex);
       }
 
       str++;
     }
-    data.strQuery += THREAD_NUM;
+
+    trieNode = data.trieRoot;
+    data.strQuery++;
+    searchCount++;
   }
 
   return nullptr;
 }
+
 
 int searchAllPatterns(struct Trie* trieRoot, char* strQuery)
 {
@@ -119,40 +194,96 @@ int searchAllPatterns(struct Trie* trieRoot, char* strQuery)
     return 0;
   }
 
-  globalStrQuery = strQuery;
-  globalQueryLen = strlen(strQuery);
-
   printed.clear();
   answers.clear();
 
-  for (uint64_t i = 0; i < THREAD_NUM; ++i) {
-    // pthread_join(threads[i], NULL);
-    // threadArgs[i].trieRoot = trieRoot;
-    threadArgs[i].strQuery = globalStrQuery + i;
-    pthread_create(&threads[i], NULL, searchForThread, (void*)i);
+  // prepare arguments for theads
+
+  uint64_t tid = THREAD_NUM - 1;
+  uint32_t numberOfThreadRun = (strlen(strQuery) / SEARCH_ITER_NUM) + 1;
+  for (uint64_t i = 0; i < numberOfThreadRun; ++i) {
+    tid = i % THREAD_NUM;
+    threadArgs[tid].strQuery = strQuery;
+    threadArgs[tid].trieRoot = trieRoot;
+    threadArgs[tid].searchLength = SEARCH_ITER_NUM;
+
+    // full of threads. Run!
+    if (tid == THREAD_NUM - 1) {
+
+      // wake up threads
+      // thread reinit for start
+      for (int i = 0; i < THREAD_NUM; ++i) {
+        threadIsSleep[i] = false;
+      }
+
+      // Wake up all threads to work
+      pthread_mutex_lock(&condMutex);
+      pthread_cond_broadcast(&cond);
+      pthread_mutex_unlock(&condMutex);
+
+
+      // Wait for all threads to finish work
+      while (1) {
+        bool all_thread_done = true;
+        for (uint32_t i = 0; i < THREAD_NUM; i++) {
+          if (threadIsSleep[i] == false) {
+            all_thread_done = false;
+            break;
+          }
+        }
+        if (all_thread_done) {
+          break;
+        }
+        pthread_yield();
+      }
+
+    }
+
+    strQuery += SEARCH_ITER_NUM;
   }
 
-  //wait threads
-  for (int i = 0; i < THREAD_NUM; ++i) {
-    pthread_join(threads[i], NULL);
-    threads[i] = 0;
-  }
+  // there is left threads. Run them.
+  if (tid != THREAD_NUM - 1) {
 
+    // wake up threads
+    // thread reinit for start
+    for (uint32_t i = 0; i < THREAD_NUM; ++i) {
+      threadIsSleep[i] = false;
+    }
+
+    for (int i = tid + 1; i < THREAD_NUM; ++i) {
+      threadArgs[i].strQuery = nullptr;
+    }
+
+
+    // Wake up all threads to work
+    pthread_mutex_lock(&condMutex);
+    pthread_cond_broadcast(&cond);
+    pthread_mutex_unlock(&condMutex);
+
+
+    // Wait for all threads to finish work
+    while (1) {
+      bool all_thread_done = true;
+      for (uint32_t i = 0; i < THREAD_NUM; i++) {
+        if (threadIsSleep[i] == false) {
+          all_thread_done = false;
+          break;
+        }
+      }
+      if (all_thread_done) {
+        break;
+      }
+      pthread_yield();
+    }
+  }
 
   // TODO:print
   // sort answer vector
   // check whether the answer was printed
   // if answer is not printed, print answer and add to printed set
   // clear printed set and answer vector
-  
 
-  //collect answers
-
-  for (int i = 0; i < THREAD_NUM; ++i) {
-    for (auto &answer : localAnswers[i]) {
-      answers.push_back(answer);
-    }
-  }
 
   char* printingTarget;
   uint32_t size = answers.size();
@@ -201,88 +332,18 @@ int searchAllPatterns(struct Trie* trieRoot, char* strQuery)
   }
   std::cout << std::endl;
 
-  globalStrQuery = nullptr;
-  globalQueryLen = 0;
-  globalIndex = 0;
-
   //return has no meaning.
   return 1;
 }
 
 
-
-
-/* int searchAllPatterns(struct Trie* trieRoot, char* strQuery)
- * {
- *   // return 0 if Trie is empty
- *   if (trieRoot == NULL)
- *     return 0;
- *
- *   struct Trie* curr = trieRoot;
- *
- *   bool firstPrint = true;
- *   bool hasAnswer = false;
- *   printed.clear();
- *
- *   char* str;
- *   while (*strQuery) {
- *     str = strQuery;
- *
- *     while (*str)
- *     {
- *       // go to next node
- *       curr = curr->chars[*str - 'a'];
- *
- *       // if string is invalid (reached end of path in Trie)
- *       if (curr == NULL) {
- *         curr = trieRoot;
- *         break;
- *       } else if (curr -> wordID) {
- *         if (printed.find(curr->wordID) != printed.end()) {
- *           // do not print if it was printed.
- *         } else {
- *           printed.insert(curr->wordID);
- *           // print start
- *           if (!firstPrint) {
- *             std::cout << '|';
- *           }
- *
- *           char* print = strQuery;
- *           while(print <= str) {
- *             std::cout << *print;
- *             print++;
- *           }
- *           firstPrint = false;
- *           hasAnswer = true;
- *         }
- *       }
- *
- *       // move to next chars
- *       str++;
- *     }
- *
- *     curr = trieRoot;
- *     strQuery++;
- *   }
- *
- *
- *   if (hasAnswer == false) {
- *     std::cout << "-1";
- *   }
- *
- *   std::cout << '\n';
- *   // if current node is a leaf and we have reached the
- *   // end of the string, return 1
- *   return curr->wordID;
- * }
- *  */
-
-// returns 1 if given trieNode has any children
-int childExist(struct Trie* curr)
+int childExist(struct Trie* trieNode)
 {
-  for (int i = 0; i < ALPHA_NUM; i++)
-    if (curr->chars[i])
-      return 1;	// child found
+  for (int i = 0; i < ALPHA_NUM; i++){
+    if (trieNode->chars[i]){
+      return 1;
+    }
+  }
 
   return 0;
 }
@@ -301,7 +362,7 @@ int erase(struct Trie* *trieNode, char* str) {
         // and it has a node to target string
         (*trieNode)->chars[*str - 'a'] != NULL &&
 
-        // find next chars recursively and erase it.
+        // find next character recursively and erase it.
         erase(&((*trieNode)->chars[*str - 'a']), str + 1) &&
 
         // if current node is not the end of string
@@ -340,10 +401,7 @@ int erase(struct Trie* *trieNode, char* str) {
   return 0;
 }
 
-
-// Trie Implementation in C - Insertion, Searching and erase
-int TestTrie()
-{
+int TestTrie() {
   struct Trie* trieRoot = createTrieNode();
 
   insert(&trieRoot, (char*)"app");

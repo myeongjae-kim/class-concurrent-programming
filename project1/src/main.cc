@@ -4,7 +4,22 @@
 
 #define RESERVED_CAPACITY 1024
 
- struct Trie *globalTrieRoot;
+
+
+
+extern pthread_cond_t cond;
+extern pthread_mutex_t condMutex;
+
+extern pthread_mutex_t vectorMutex;
+
+extern pthread_t threads[THREAD_NUM];
+extern ThreadArg threadArgs[THREAD_NUM];
+extern bool threadIsSleep[THREAD_NUM];
+
+extern void* searchSubstring(void* arg);
+
+extern bool finished;
+
 
 int main(void)
 {
@@ -20,26 +35,54 @@ int main(void)
   strBuffer.reserve(RESERVED_CAPACITY);
 
   struct Trie* head = createTrieNode();
-  globalTrieRoot = head;
   for (int i = 0; i < numberOfStrings; ++i) {
     std::cin >> strBuffer;
     insert(&head, (char*)strBuffer.c_str());
   }
 
+  // initializing cond and mutex
+  pthread_cond_init(&cond, NULL);
+  finished = false;
+
+  for (long i = 0; i < THREAD_NUM; i++) {
+    // create threads
+    threadIsSleep[i] = false;
+    if (pthread_create(&threads[i], 0, searchSubstring, (void*)i) < 0) {
+      std::cout << "thread create has been failed." << std::endl;
+      return 0;
+    }
+
+    // wait for thread sleep
+    while (threadIsSleep[i] == false) {
+      pthread_yield();
+    }
+  }
+
+
   std::cout << 'R' << std::endl;
 
   // To the end of stdin
   char cmd;
-  while (std::cin >> cmd) {
+  while (1) {
+    if ( !(std::cin >> cmd)) {
+      finished = true;
+
+      // Wake up all threads to terminate
+      pthread_mutex_lock(&condMutex);
+      pthread_cond_broadcast(&cond);
+      pthread_mutex_unlock(&condMutex);
+      break;
+    }
+
     std::cin.get();
 
     // get argument
     getline(std::cin, strBuffer);
     switch (cmd) {
       case 'Q':
-#ifdef DBG
-        std::cout << "(main) call query" << std::endl;
-#endif
+
+
+
         searchAllPatterns(head, (char*)strBuffer.c_str());
         // setWasPrintedFalse(head);
         break;
@@ -64,6 +107,11 @@ int main(void)
   }
 
   // free other memories
+
+  // Wait threads end
+  for (int i = 0; i < THREAD_NUM; i++) {
+    pthread_join(threads[i], NULL);
+  }
 
   return 0;
 }
