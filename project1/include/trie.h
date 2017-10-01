@@ -4,7 +4,7 @@
 #include <pthread.h>
 
 // for threads
-#define THREAD_NUM 60
+#define THREAD_NUM 36
 static const uint32_t SEARCH_ITER_NUM = 16000;
 
 typedef struct _ThreadArg {
