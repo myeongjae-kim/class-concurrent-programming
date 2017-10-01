@@ -12,6 +12,7 @@
 
 uint32_t patternID = 1;
 std::vector < Answer > answers;
+std::vector < Answer > localAnswers[THREAD_NUM];
 
 std::unordered_set <uint32_t> printed;
 
@@ -37,26 +38,26 @@ void insert(struct Trie* *trieRoot, char* str)
 	trieNode->wordID = patternID++;
 }
 
-int search(struct Trie* trieRoot, char* str)
-{
-  if (trieRoot == NULL){
-    return 0;
-  }
-
-  struct Trie* trieNode = trieRoot;
-  while (*str)
-  {
-    trieNode = trieNode->chars[*str - 'a'];
-
-    if (trieNode == NULL) {
-      return 0;
-    }
-
-    str++;
-  }
-
-  return trieNode->wordID;
-}
+/* int search(struct Trie* trieRoot, char* str)
+ * {
+ *   if (trieRoot == NULL){
+ *     return 0;
+ *   }
+ *
+ *   struct Trie* trieNode = trieRoot;
+ *   while (*str)
+ *   {
+ *     trieNode = trieNode->chars[*str - 'a'];
+ *
+ *     if (trieNode == NULL) {
+ *       return 0;
+ *     }
+ *
+ *     str++;
+ *   }
+ *
+ *   return trieNode->wordID;
+ * } */
 
 // struct for parallelizing
 
@@ -82,6 +83,7 @@ void* searchSubstring(void* arg) {
 
 
   while (!finished) {
+    localAnswers[tid].clear();
     if (threadIsSleep[tid] == false && threadArgs[tid].strQuery) {
       ThreadArg data = threadArgs[uint64_t(tid)];
 
@@ -106,9 +108,7 @@ void* searchSubstring(void* arg) {
             answerBuffer.length = (uint32_t)(str - data.strQuery) + 1;
             answerBuffer.patternID = trieNode->wordID;
 
-            pthread_mutex_lock(&vectorMutex);
-            answers.push_back(answerBuffer);
-            pthread_mutex_unlock(&vectorMutex);
+            localAnswers[tid].push_back(answerBuffer);
           }
 
           str++;
@@ -138,50 +138,6 @@ sleep:
     }
   }
 
-
-  return nullptr;
-}
-
-
-
-
-// argument is dynamically allocated.
-void* searchForThread(void* tid) {
-  ThreadArg data = threadArgs[uint64_t(tid)];
-
-  struct Trie* trieNode = data.trieRoot;
-  Answer answerBuffer;
-
-  std::string query(data.strQuery);
-
-  uint32_t searchCount = 0;
-  char* str;
-  while (searchCount < data.searchLength && *data.strQuery) {
-    str = data.strQuery;
-
-    while (*str) {
-      trieNode = trieNode->chars[*str - 'a'];
-
-      if (trieNode == NULL) {
-        trieNode = data.trieRoot;
-        break;
-      } else if (trieNode -> wordID) {
-        answerBuffer.startAdr = data.strQuery;
-        answerBuffer.length = (uint32_t)(str - data.strQuery) + 1;
-        answerBuffer.patternID = trieNode->wordID;
-
-        pthread_mutex_lock(&vectorMutex);
-        answers.push_back(answerBuffer);
-        pthread_mutex_unlock(&vectorMutex);
-      }
-
-      str++;
-    }
-
-    trieNode = data.trieRoot;
-    data.strQuery++;
-    searchCount++;
-  }
 
   return nullptr;
 }
@@ -284,6 +240,13 @@ int searchAllPatterns(struct Trie* trieRoot, char* strQuery)
   // if answer is not printed, print answer and add to printed set
   // clear printed set and answer vector
 
+
+  //collect answers
+  for (int i = 0; i < THREAD_NUM; ++i) {
+    for (auto answer : localAnswers[i]) {
+      answers.push_back(answer);
+    }
+  }
 
   char* printingTarget;
   uint32_t size = answers.size();
@@ -397,24 +360,6 @@ int erase(struct Trie* *trieNode, char* str) {
       return 0;
     }
   }
-
-  return 0;
-}
-
-int TestTrie() {
-  struct Trie* trieRoot = createTrieNode();
-
-  insert(&trieRoot, (char*)"app");
-  insert(&trieRoot, (char*)"apple");
-  insert(&trieRoot, (char*)"pineapple");
-  insert(&trieRoot, (char*)"leap");
-
-  searchAllPatterns(trieRoot, (char*)"apple");
-  // setWasPrintedFalse(trieRoot);
-  searchAllPatterns(trieRoot, (char*)"pineapple");
-  // setWasPrintedFalse(trieRoot);
-  // searchAllPatterns(trieRoot, "penpineappleapplepen");
-
 
   return 0;
 }
