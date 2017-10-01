@@ -69,12 +69,15 @@ long globalIndex = 0;
 long globalQueryLen = 0;
 
 extern struct Trie *globalTrieRoot;
+std::vector< Answer > localAnswers[THREAD_NUM];
 
 // argument is dynamically allocated.
-void* searchForThread(void* tid) {
-  ThreadArg data = threadArgs[uint64_t(tid)];
+void* searchForThread(void* arg) {
+  long tid = (long)arg;
+  ThreadArg data = threadArgs[tid];
 
   Answer answerBuffer;
+  localAnswers[tid].clear();
 
   char* str;
   struct Trie* trieNode;
@@ -89,7 +92,6 @@ void* searchForThread(void* tid) {
       break;
     }
     // std::cout << "(thread " << (long)tid << ") strQueryAdr: " << (long)data.strQuery << std::endl;
-
     
     str = data.strQuery;
 
@@ -104,9 +106,7 @@ void* searchForThread(void* tid) {
         answerBuffer.patternID = trieNode->wordID;
 
         // TODO: parallelize by using index.
-        pthread_mutex_lock(&vectorMutex);
-        answers.push_back(answerBuffer);
-        pthread_mutex_unlock(&vectorMutex);
+        localAnswers[tid].push_back(answerBuffer);
       }
 
       str++;
@@ -148,7 +148,15 @@ int searchAllPatterns(struct Trie* trieRoot, char* strQuery)
   // check whether the answer was printed
   // if answer is not printed, print answer and add to printed set
   // clear printed set and answer vector
+  
 
+  //collect answers
+
+  for (int i = 0; i < THREAD_NUM; ++i) {
+    for (auto &answer : localAnswers[i]) {
+      answers.push_back(answer);
+    }
+  }
 
   char* printingTarget;
   uint32_t size = answers.size();
