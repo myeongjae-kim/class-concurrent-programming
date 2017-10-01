@@ -7,8 +7,8 @@
 
 
 
-extern pthread_cond_t cond;
-extern pthread_mutex_t condMutex;
+extern pthread_cond_t cond[THREAD_NUM];
+extern pthread_mutex_t condMutex[THREAD_NUM];
 
 extern pthread_mutex_t vectorMutex;
 
@@ -41,7 +41,10 @@ int main(void)
   }
 
   // initializing cond and mutex
-  pthread_cond_init(&cond, NULL);
+  for (int i = 0; i < THREAD_NUM; ++i) {
+    pthread_cond_init(&cond[i], NULL);
+    condMutex[i] = PTHREAD_MUTEX_INITIALIZER;
+  }
   finished = false;
 
   for (long i = 0; i < THREAD_NUM; i++) {
@@ -68,9 +71,11 @@ int main(void)
       finished = true;
 
       // Wake up all threads to terminate
-      pthread_mutex_lock(&condMutex);
-      pthread_cond_broadcast(&cond);
-      pthread_mutex_unlock(&condMutex);
+      for (int i = 0; i < THREAD_NUM; ++i) {
+        pthread_mutex_lock(&condMutex[i]);
+        pthread_cond_broadcast(&cond[i]);
+        pthread_mutex_unlock(&condMutex[i]);
+      }
       break;
     }
 

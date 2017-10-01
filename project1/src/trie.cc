@@ -60,8 +60,8 @@ void insert(struct Trie* *trieRoot, char* str)
 
 // struct for parallelizing
 
-pthread_cond_t cond;
-pthread_mutex_t condMutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t cond[THREAD_NUM];
+pthread_mutex_t condMutex[THREAD_NUM];
 
 pthread_mutex_t vectorMutex = PTHREAD_MUTEX_INITIALIZER;
 
@@ -76,10 +76,10 @@ void* searchSubstring(void* arg) {
   long tid = (long)arg;
   localAnswers[tid].clear();
 
-  pthread_mutex_lock(&condMutex);
+  pthread_mutex_lock(&condMutex[tid]);
   threadIsSleep[tid] = true;
-  pthread_cond_wait(&cond, &condMutex);
-  pthread_mutex_unlock(&condMutex);
+  pthread_cond_wait(&cond[tid], &condMutex[tid]);
+  pthread_mutex_unlock(&condMutex[tid]);
 
 
   while (!finished) {
@@ -122,11 +122,11 @@ void* searchSubstring(void* arg) {
 
 
 sleep:
-    pthread_mutex_lock(&condMutex);
+    pthread_mutex_lock(&condMutex[tid]);
     threadIsSleep[tid] = true;
-    pthread_cond_wait(&cond, &condMutex);
+    pthread_cond_wait(&cond[tid], &condMutex[tid]);
     // Waked up
-    pthread_mutex_unlock(&condMutex);
+    pthread_mutex_unlock(&condMutex[tid]);
 
     if (threadIsSleep[tid] == true) {
       if (finished) {
@@ -175,26 +175,29 @@ int searchAllPatterns(struct Trie* trieRoot, char* strQuery, uint32_t strLength)
 
   // wake up threads
   // thread reinit for start
-  for (uint32_t i = 0; i < THREAD_NUM; ++i) {
+  for (uint32_t i = 0; i <= tid ; ++i) {
     threadIsSleep[i] = false;
   }
 
-  for (int i = tid + 1; i < THREAD_NUM; ++i) {
+  for (int i = tid + 1; i <= THREAD_NUM; ++i) {
     threadArgs[i].strQuery = nullptr;
   }
 
 
   // Wake up all threads to work
+
   // TODO: Don't wake up threads that does not have arguments.
-  pthread_mutex_lock(&condMutex);
-  pthread_cond_broadcast(&cond);
-  pthread_mutex_unlock(&condMutex);
+  for (uint32_t i = 0; i <= tid; ++i) {
+    pthread_mutex_lock(&condMutex[i]);
+    pthread_cond_signal(&cond[i]);
+    pthread_mutex_unlock(&condMutex[i]);
+  }
 
 
   // Wait for all threads to finish work
   while (1) {
     bool all_thread_done = true;
-    for (uint32_t i = 0; i < THREAD_NUM; i++) {
+    for (uint32_t i = 0; i <= tid; i++) {
       if (threadIsSleep[i] == false) {
         all_thread_done = false;
         break;
