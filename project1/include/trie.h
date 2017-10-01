@@ -4,7 +4,7 @@
 #include <pthread.h>
 
 // for threads
-#define THREAD_NUM 36
+#define THREAD_NUM 35
 
 typedef struct _ThreadArg {
   struct Trie* trieRoot; // this value could be a global variable.
