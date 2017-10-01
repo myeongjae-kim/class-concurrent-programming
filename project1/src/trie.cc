@@ -58,8 +58,8 @@ int search(struct Trie* trieRoot, char* str)
 }
 
 
-pthread_mutex_t vectorMutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t queryMutex = PTHREAD_MUTEX_INITIALIZER;
+// pthread_mutex_t vectorMutex = PTHREAD_MUTEX_INITIALIZER;
+// pthread_mutex_t queryMutex = PTHREAD_MUTEX_INITIALIZER;
 
 pthread_t threads[THREAD_NUM];
 ThreadArg threadArgs[THREAD_NUM];
@@ -82,15 +82,10 @@ void* searchForThread(void* arg) {
   char* str;
   struct Trie* trieNode;
 
-  data.strQuery -= THREAD_NUM;
-  while (1) {
+  // data.strQuery -= THREAD_NUM;
+  while (data.strQuery < globalStrQuery + globalQueryLen) {
     trieNode = globalTrieRoot;
 
-
-    data.strQuery += THREAD_NUM;
-    if (data.strQuery >= globalStrQuery + globalQueryLen) {
-      break;
-    }
     // std::cout << "(thread " << (long)tid << ") strQueryAdr: " << (long)data.strQuery << std::endl;
     
     str = data.strQuery;
@@ -111,6 +106,7 @@ void* searchForThread(void* arg) {
 
       str++;
     }
+    data.strQuery += THREAD_NUM;
   }
 
   return nullptr;
