@@ -9,7 +9,6 @@
 #include <vector>
 #include <unordered_set>
 
-
 uint32_t patternID = 1;
 std::vector < Answer > answers;
 std::vector < Answer > localAnswers[THREAD_NUM];
@@ -142,7 +141,6 @@ sleep:
   return nullptr;
 }
 
-
 int searchAllPatterns(struct Trie* trieRoot, char* strQuery, uint32_t strLength)
 {
   // return 0 if Trie is empty
@@ -160,86 +158,52 @@ int searchAllPatterns(struct Trie* trieRoot, char* strQuery, uint32_t strLength)
 
   uint64_t tid = THREAD_NUM - 1;
   // uint32_t numberOfThreadRun = (strlen(strQuery) / SEARCH_ITER_NUM) + 1;
-  SEARCH_ITER_NUM = strLength / THREAD_NUM + 1;
-  for (uint64_t i = 0; i < THREAD_NUM; ++i) {
-    if (strQuery >= endOfString) {
-      break;
-    }
+  uint32_t SEARCH_ITER_NUM = strLength / THREAD_NUM + 1;
 
+
+  // Argument Setting
+  for (uint64_t i = 0; i < THREAD_NUM && strQuery < endOfString; ++i) {
     tid = i % THREAD_NUM;
     threadArgs[tid].strQuery = strQuery;
     threadArgs[tid].trieRoot = trieRoot;
     threadArgs[tid].searchLength = SEARCH_ITER_NUM;
 
-    // full of threads. Run!
-    if (tid == THREAD_NUM - 1) {
-
-      // wake up threads
-      // thread reinit for start
-      for (int i = 0; i < THREAD_NUM; ++i) {
-        threadIsSleep[i] = false;
-      }
-
-      // Wake up all threads to work
-      pthread_mutex_lock(&condMutex);
-      pthread_cond_broadcast(&cond);
-      pthread_mutex_unlock(&condMutex);
-
-
-      // Wait for all threads to finish work
-      while (1) {
-        bool all_thread_done = true;
-        for (uint32_t i = 0; i < THREAD_NUM; i++) {
-          if (threadIsSleep[i] == false) {
-            all_thread_done = false;
-            break;
-          }
-        }
-        if (all_thread_done) {
-          break;
-        }
-        pthread_yield();
-      }
-
-    }
-
     strQuery += SEARCH_ITER_NUM;
   }
 
-  // there is left threads. Run them.
-  if (tid != THREAD_NUM - 1) {
+  // Run Threads
 
-    // wake up threads
-    // thread reinit for start
-    for (uint32_t i = 0; i < THREAD_NUM; ++i) {
-      threadIsSleep[i] = false;
-    }
+  // wake up threads
+  // thread reinit for start
+  for (uint32_t i = 0; i < THREAD_NUM; ++i) {
+    threadIsSleep[i] = false;
+  }
 
-    for (int i = tid + 1; i < THREAD_NUM; ++i) {
-      threadArgs[i].strQuery = nullptr;
-    }
-
-
-    // Wake up all threads to work
-    pthread_mutex_lock(&condMutex);
-    pthread_cond_broadcast(&cond);
-    pthread_mutex_unlock(&condMutex);
+  for (int i = tid + 1; i < THREAD_NUM; ++i) {
+    threadArgs[i].strQuery = nullptr;
+  }
 
 
-    // Wait for all threads to finish work
-    while (1) {
-      bool all_thread_done = true;
-      for (uint32_t i = 0; i < THREAD_NUM; i++) {
-        if (threadIsSleep[i] == false) {
-          all_thread_done = false;
-          break;
-        }
-      }
-      if (all_thread_done) {
+  // Wake up all threads to work
+  // TODO: Don't wake up threads that does not have arguments.
+  pthread_mutex_lock(&condMutex);
+  pthread_cond_broadcast(&cond);
+  pthread_mutex_unlock(&condMutex);
+
+
+  // Wait for all threads to finish work
+  while (1) {
+    bool all_thread_done = true;
+    for (uint32_t i = 0; i < THREAD_NUM; i++) {
+      if (threadIsSleep[i] == false) {
+        all_thread_done = false;
         break;
       }
-      pthread_yield();
     }
+    if (all_thread_done) {
+      break;
+    }
+    pthread_yield();
   }
 
   // TODO:print

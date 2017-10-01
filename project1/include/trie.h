@@ -5,7 +5,6 @@
 
 // for threads
 #define THREAD_NUM 36
-static uint32_t SEARCH_ITER_NUM = 16000;
 
 typedef struct _ThreadArg {
   struct Trie* trieRoot; // this value could be a global variable.
