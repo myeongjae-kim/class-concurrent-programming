@@ -126,7 +126,7 @@ int searchAllPatterns(struct Trie* trieRoot, char* strQuery)
   answers.clear();
 
   for (uint64_t i = 0; i < THREAD_NUM; ++i) {
-    pthread_join(threads[i], NULL);
+    // pthread_join(threads[i], NULL);
     // threadArgs[i].trieRoot = trieRoot;
     threadArgs[i].strQuery = globalStrQuery + i;
     pthread_create(&threads[i], NULL, searchForThread, (void*)i);
