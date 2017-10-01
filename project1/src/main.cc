@@ -83,7 +83,7 @@ int main(void)
 
 
 
-        searchAllPatterns(head, (char*)strBuffer.c_str());
+        searchAllPatterns(head, (char*)strBuffer.c_str(), strBuffer.length());
         // setWasPrintedFalse(head);
         break;
       case 'A':

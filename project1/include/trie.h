@@ -5,7 +5,7 @@
 
 // for threads
 #define THREAD_NUM 36
-static const uint32_t SEARCH_ITER_NUM = 16000;
+static uint32_t SEARCH_ITER_NUM = 16000;
 
 typedef struct _ThreadArg {
   struct Trie* trieRoot; // this value could be a global variable.
@@ -35,6 +35,6 @@ void insert(struct Trie* *trieHead, char* str);
 int erase(struct Trie* *trieNode, char* str);
 
 // int search(struct Trie* trieHead, char* str);
-int searchAllPatterns(struct Trie* trieHead, char* strQuery);
+int searchAllPatterns(struct Trie* trieHead, char* strQuery, uint32_t strLength);
 
 // int TestTrie();

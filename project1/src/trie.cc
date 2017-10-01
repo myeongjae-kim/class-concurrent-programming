@@ -143,7 +143,7 @@ sleep:
 }
 
 
-int searchAllPatterns(struct Trie* trieRoot, char* strQuery)
+int searchAllPatterns(struct Trie* trieRoot, char* strQuery, uint32_t strLength)
 {
   // return 0 if Trie is empty
   if (trieRoot == NULL){
@@ -155,9 +155,17 @@ int searchAllPatterns(struct Trie* trieRoot, char* strQuery)
 
   // prepare arguments for theads
 
+
+  char* endOfString = strQuery + strLength;
+
   uint64_t tid = THREAD_NUM - 1;
-  uint32_t numberOfThreadRun = (strlen(strQuery) / SEARCH_ITER_NUM) + 1;
-  for (uint64_t i = 0; i < numberOfThreadRun; ++i) {
+  // uint32_t numberOfThreadRun = (strlen(strQuery) / SEARCH_ITER_NUM) + 1;
+  SEARCH_ITER_NUM = strLength / THREAD_NUM + 1;
+  for (uint64_t i = 0; i < THREAD_NUM; ++i) {
+    if (strQuery >= endOfString) {
+      break;
+    }
+
     tid = i % THREAD_NUM;
     threadArgs[tid].strQuery = strQuery;
     threadArgs[tid].trieRoot = trieRoot;
