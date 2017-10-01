@@ -75,6 +75,7 @@ bool finished;
 
 void* searchSubstring(void* arg) {
   long tid = (long)arg;
+  localAnswers[tid].clear();
 
   pthread_mutex_lock(&condMutex);
   threadIsSleep[tid] = true;
@@ -83,7 +84,6 @@ void* searchSubstring(void* arg) {
 
 
   while (!finished) {
-    localAnswers[tid].clear();
     if (threadIsSleep[tid] == false && threadArgs[tid].strQuery) {
       ThreadArg data = threadArgs[uint64_t(tid)];
 
@@ -246,6 +246,7 @@ int searchAllPatterns(struct Trie* trieRoot, char* strQuery)
     for (auto answer : localAnswers[i]) {
       answers.push_back(answer);
     }
+    localAnswers[i].clear();
   }
 
   char* printingTarget;
