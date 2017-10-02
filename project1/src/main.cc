@@ -6,15 +6,13 @@
 
 
 extern pthread_cond_t cond[THREAD_NUM];
-extern pthread_mutex_t condMutex[THREAD_NUM];
-
-extern pthread_mutex_t vectorMutex;
+extern pthread_mutex_t cond_mutex[THREAD_NUM];
 
 extern pthread_t threads[THREAD_NUM];
-extern ThreadArg threadArgs[THREAD_NUM];
-extern bool threadIsSleep[THREAD_NUM];
+extern thread_arg_t thread_args[THREAD_NUM];
+extern bool thread_is_sleep[THREAD_NUM];
 
-extern void* searchSubstring(void* arg);
+extern void* search_substring(void* arg);
 
 extern bool finished;
 
@@ -22,36 +20,36 @@ int main(void)
 {
   std::ios::sync_with_stdio(false);
 
-  int numberOfStrings = 0;
-  std::cin >> numberOfStrings;
+  int number_of_strings = 0;
+  std::cin >> number_of_strings;
 
   // reserve capacity for performance
-  std::string strBuffer;
-  strBuffer.reserve(RESERVED_CAPACITY);
+  std::string str_buffer;
+  str_buffer.reserve(RESERVED_CAPACITY);
 
-  struct Trie* head = createTrieNode();
-  for (int i = 0; i < numberOfStrings; ++i) {
-    std::cin >> strBuffer;
-    insert(&head, (char*)strBuffer.c_str());
+  struct trie* root = create_trie_node();
+  for (int i = 0; i < number_of_strings; ++i) {
+    std::cin >> str_buffer;
+    insert(&root, (char*)str_buffer.c_str());
   }
 
   // initializing cond and mutex
   for (int i = 0; i < THREAD_NUM; ++i) {
     pthread_cond_init(&cond[i], NULL);
-    condMutex[i] = PTHREAD_MUTEX_INITIALIZER;
+    cond_mutex[i] = PTHREAD_MUTEX_INITIALIZER;
   }
   finished = false;
 
   for (long i = 0; i < THREAD_NUM; i++) {
     // create threads
-    threadIsSleep[i] = false;
-    if (pthread_create(&threads[i], 0, searchSubstring, (void*)i) < 0) {
+    thread_is_sleep[i] = false;
+    if (pthread_create(&threads[i], 0, search_substring, (void*)i) < 0) {
       std::cout << "thread create has been failed." << std::endl;
       return 0;
     }
 
     // wait for thread sleep
-    while (threadIsSleep[i] == false) {
+    while (thread_is_sleep[i] == false) {
       pthread_yield();
     }
   }
@@ -67,9 +65,9 @@ int main(void)
 
       // Wake up all threads to terminate
       for (int i = 0; i < THREAD_NUM; ++i) {
-        pthread_mutex_lock(&condMutex[i]);
+        pthread_mutex_lock(&cond_mutex[i]);
         pthread_cond_broadcast(&cond[i]);
-        pthread_mutex_unlock(&condMutex[i]);
+        pthread_mutex_unlock(&cond_mutex[i]);
       }
       break;
     }
@@ -77,19 +75,19 @@ int main(void)
     std::cin.get();
 
     // get argument
-    getline(std::cin, strBuffer);
+    getline(std::cin, str_buffer);
     switch (cmd) {
       case 'Q':
-        searchAllPatterns(head, (char*)strBuffer.c_str(), strBuffer.length());
+        search_all_patterns(root, (char*)str_buffer.c_str(), str_buffer.length());
         // setWasPrintedFalse(head);
         break;
       case 'A':
-        insert(&head, (char*)strBuffer.c_str());
+        insert(&root, (char*)str_buffer.c_str());
         break;
       case 'D':
-        erase(&head, strBuffer.c_str());
-        if (head == NULL) {
-          head = createTrieNode();
+        erase(&root, str_buffer.c_str());
+        if (root == NULL) {
+          root = create_trie_node();
         }
         break;
 
@@ -103,12 +101,13 @@ int main(void)
     }
   }
 
-  // free other memories
 
   // Wait threads end
   for (int i = 0; i < THREAD_NUM; i++) {
     pthread_join(threads[i], NULL);
   }
 
+  // free other memories
+  erase_all(&root);
   return 0;
 }
