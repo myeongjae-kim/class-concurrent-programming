@@ -131,47 +131,38 @@ void* searchSubstring(void* arg) {
 
     // search is finished.
     // go to sleep
-sleep:
     pthread_mutex_lock(&condMutex[tid]);
     threadIsSleep[tid] = true;
     pthread_cond_wait(&cond[tid], &condMutex[tid]);
     pthread_mutex_unlock(&condMutex[tid]);
 
-    // Waked up
-    if (threadIsSleep[tid] == true) {
-      if (finished) {
-        break;
-      } else {
-        goto sleep;
-      }
-    }
+    // Wake up!
+    
   }
 
 
   return nullptr;
 }
 
-int searchAllPatterns(struct Trie* trieRoot, char* strQuery, uint32_t strLength)
+void searchAllPatterns(struct Trie* trieRoot, char* strQuery, uint32_t strLength)
 {
   // return 0 if Trie is empty
   if (trieRoot == NULL){
-    return 0;
+    return;
   }
 
+  // initialize data structures.
   printed.clear();
   answers.clear();
-
-  // prepare arguments for theads
 
 
   char* endOfString = strQuery + strLength;
 
-  uint64_t tid = THREAD_NUM - 1;
-  // uint32_t numberOfThreadRun = (strlen(strQuery) / SEARCH_ITER_NUM) + 1;
+  // the number of iteration of each thread.
   uint32_t SEARCH_ITER_NUM = strLength / THREAD_NUM + 1;
 
-
-  // Argument Setting
+  // prepare arguments for theads
+  uint64_t tid = 0;
   for (uint64_t i = 0; i < THREAD_NUM && strQuery < endOfString; ++i) {
     tid = i % THREAD_NUM;
     threadArgs[tid].strQuery = strQuery;
@@ -182,7 +173,6 @@ int searchAllPatterns(struct Trie* trieRoot, char* strQuery, uint32_t strLength)
   }
 
   // Run Threads
-
   // wake up threads
   // thread reinit for start
   for (uint32_t i = 0; i <= tid ; ++i) {
@@ -195,7 +185,6 @@ int searchAllPatterns(struct Trie* trieRoot, char* strQuery, uint32_t strLength)
 
 
   // Wake up all threads to work
-
   // Don't wake up threads that does not have arguments.
   for (uint32_t i = 0; i <= tid; ++i) {
     pthread_mutex_lock(&condMutex[i]);
@@ -238,21 +227,25 @@ int searchAllPatterns(struct Trie* trieRoot, char* strQuery, uint32_t strLength)
   uint32_t size = answers.size();
   if (size != 0) {
     // answer exists
+    // sort!
     std::sort(answers.begin(), answers.end(), [](Answer lhs, Answer rhs){
+        // sort by substring's start location
         if (lhs.startAdr < rhs.startAdr) {
-        return true;
+          return true;
         } else if (lhs.startAdr > rhs.startAdr) {
-        return false;
+          return false;
         } else {
-        if (lhs.length < rhs.length) {
-        return true;
-        } else {
-        return false;
-        }
-        }
+          // if substring's start location is same,
+          // a short length precedes a long one.
+          if (lhs.length < rhs.length) {
+            return true;
+            } else {
+            return false;
+            }
+          }
         });
 
-    //print firstone
+    //print first one
     Answer& tempAnswer = answers[0];
     printed.insert(tempAnswer.patternID);
     printingTarget = tempAnswer.startAdr;
@@ -281,8 +274,7 @@ int searchAllPatterns(struct Trie* trieRoot, char* strQuery, uint32_t strLength)
   }
   std::cout << std::endl;
 
-  //return has no meaning.
-  return 1;
+  return;
 }
 
 

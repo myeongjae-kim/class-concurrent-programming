@@ -34,6 +34,6 @@ void insert(struct Trie* *trieHead, char* str);
 int erase(struct Trie* *trieNode, char* str);
 
 // int search(struct Trie* trieHead, char* str);
-int searchAllPatterns(struct Trie* trieHead, char* strQuery, uint32_t strLength);
+void searchAllPatterns(struct Trie* trieHead, char* strQuery, uint32_t strLength);
 
 // int TestTrie();
