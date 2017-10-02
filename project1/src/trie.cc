@@ -10,10 +10,6 @@
 #include <unordered_set>
 
 uint32_t patternID = 1;
-std::vector < Answer > answers;
-std::vector < Answer > localAnswers[THREAD_NUM];
-
-std::unordered_set <uint32_t> printed;
 
 struct Trie* createTrieNode() {
   // create new node
@@ -26,108 +22,122 @@ void insert(struct Trie* *trieRoot, char* str)
 	struct Trie* trieNode = *trieRoot;
 	while (*str)
 	{
+    // check wheter trie already has a character of current word.
 		if (trieNode->chars[*str - 'a'] == NULL){
 			trieNode->chars[*str - 'a'] = createTrieNode();
     }
 
+    //if not, create
 		trieNode = trieNode->chars[*str - 'a'];
+
+    //go to next character.
 		str++;
 	}
 
+  // Every word has its unique ID. It is used not to print duplicated result.
 	trieNode->wordID = patternID++;
 }
 
-/* int search(struct Trie* trieRoot, char* str)
- * {
- *   if (trieRoot == NULL){
- *     return 0;
- *   }
- *
- *   struct Trie* trieNode = trieRoot;
- *   while (*str)
- *   {
- *     trieNode = trieNode->chars[*str - 'a'];
- *
- *     if (trieNode == NULL) {
- *       return 0;
- *     }
- *
- *     str++;
- *   }
- *
- *   return trieNode->wordID;
- * } */
+// Variables for parallelizing.
 
-// struct for parallelizing
-
+// for sleep and wake for threads.
 pthread_cond_t cond[THREAD_NUM];
 pthread_mutex_t condMutex[THREAD_NUM];
 
-pthread_mutex_t vectorMutex = PTHREAD_MUTEX_INITIALIZER;
-
+// Threads and thread arguments.
 pthread_t threads[THREAD_NUM];
 ThreadArg threadArgs[THREAD_NUM];
+
+// It shows whether a thread is in sleep of not.
 bool threadIsSleep[THREAD_NUM];
 
+// If it is true, threads will be terminated.
 bool finished;
 
+
+// This vector collects answers from localAnswers.
+std::vector < Answer > answers;
+
+// Every thread has its own answer vector for avoid locking.
+std::vector < Answer > localAnswers[THREAD_NUM];
+
+// It stores already printed ID of words (wordID).
+std::unordered_set <uint32_t> printed;
 
 void* searchSubstring(void* arg) {
   long tid = (long)arg;
   localAnswers[tid].clear();
 
+  // Go to sleep when it is made.
   pthread_mutex_lock(&condMutex[tid]);
   threadIsSleep[tid] = true;
   pthread_cond_wait(&cond[tid], &condMutex[tid]);
   pthread_mutex_unlock(&condMutex[tid]);
 
-
+  // If finished has 'true', the thread will be terminated.
   while (!finished) {
+    // waken up!
+
+    // If thread is not in sleep and it has query, search substring
     if (threadIsSleep[tid] == false && threadArgs[tid].strQuery) {
-      ThreadArg data = threadArgs[uint64_t(tid)];
+      ThreadArg data = threadArgs[tid];
 
       struct Trie* trieNode = data.trieRoot;
       Answer answerBuffer;
 
-      std::string query(data.strQuery);
-
       uint32_t searchCount = 0;
       char* str;
+
+      // iterate its own cake.           and break when it is on the end of the query.
       while (searchCount < data.searchLength && *data.strQuery) {
+
+        // str is an iterating pointer that is exploring the trie.
         str = data.strQuery;
 
+        // to the end of the query
         while (*str) {
           trieNode = trieNode->chars[*str - 'a'];
 
           if (trieNode == NULL) {
+            // when the substring is not exist in the trie,
+            // finish current search and go to next character of the query and search again.
             trieNode = data.trieRoot;
             break;
           } else if (trieNode -> wordID) {
+            // When a word is exist,
+            // Add information to answerBuffer
             answerBuffer.startAdr = data.strQuery;
             answerBuffer.length = (uint32_t)(str - data.strQuery) + 1;
             answerBuffer.patternID = trieNode->wordID;
 
+            // and store in the localAnswer vector.
             localAnswers[tid].push_back(answerBuffer);
           }
 
+          // go to next character of substring.
           str++;
         }
 
+        // node reinitialization. Go to root.
         trieNode = data.trieRoot;
+
+        // go to next substring
         data.strQuery++;
+
+        // incrase iteration number.
         searchCount++;
       }
     }
 
-
-
+    // search is finished.
+    // go to sleep
 sleep:
     pthread_mutex_lock(&condMutex[tid]);
     threadIsSleep[tid] = true;
     pthread_cond_wait(&cond[tid], &condMutex[tid]);
-    // Waked up
     pthread_mutex_unlock(&condMutex[tid]);
 
+    // Waked up
     if (threadIsSleep[tid] == true) {
       if (finished) {
         break;
@@ -186,7 +196,7 @@ int searchAllPatterns(struct Trie* trieRoot, char* strQuery, uint32_t strLength)
 
   // Wake up all threads to work
 
-  // TODO: Don't wake up threads that does not have arguments.
+  // Don't wake up threads that does not have arguments.
   for (uint32_t i = 0; i <= tid; ++i) {
     pthread_mutex_lock(&condMutex[i]);
     pthread_cond_signal(&cond[i]);
