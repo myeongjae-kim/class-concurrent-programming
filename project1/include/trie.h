@@ -8,7 +8,7 @@
 
 typedef struct _ThreadArg {
   struct Trie* trieRoot; // this value could be a global variable.
-  char* strQuery;
+  const char* substringLocation;
   uint32_t searchLength;
 } ThreadArg;
 
@@ -23,7 +23,7 @@ struct Trie
 };
 
 typedef struct _Answer {
-  char* startAdr;
+  const char* startAdr;
   uint32_t length;
   uint32_t patternID;
 } Answer;
@@ -31,9 +31,9 @@ typedef struct _Answer {
 struct Trie* createTrieNode();
 
 void insert(struct Trie* *trieHead, char* str);
-int erase(struct Trie* *trieNode, char* str);
+bool erase(struct Trie* *trieNode, const char* str);
 
 // int search(struct Trie* trieHead, char* str);
-void searchAllPatterns(struct Trie* trieHead, char* strQuery, uint32_t strLength);
+void searchAllPatterns(struct Trie* trieRoot, const char* strQuery, const uint32_t strLength);
 
 // int TestTrie();

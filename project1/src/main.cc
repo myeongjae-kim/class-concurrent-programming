@@ -5,8 +5,6 @@
 #define RESERVED_CAPACITY 1024
 
 
-
-
 extern pthread_cond_t cond[THREAD_NUM];
 extern pthread_mutex_t condMutex[THREAD_NUM];
 
@@ -20,11 +18,8 @@ extern void* searchSubstring(void* arg);
 
 extern bool finished;
 
-
 int main(void)
 {
-  // TestTrie();
-
   std::ios::sync_with_stdio(false);
 
   int numberOfStrings = 0;
@@ -85,9 +80,6 @@ int main(void)
     getline(std::cin, strBuffer);
     switch (cmd) {
       case 'Q':
-
-
-
         searchAllPatterns(head, (char*)strBuffer.c_str(), strBuffer.length());
         // setWasPrintedFalse(head);
         break;
@@ -95,7 +87,7 @@ int main(void)
         insert(&head, (char*)strBuffer.c_str());
         break;
       case 'D':
-        erase(&head, (char*)strBuffer.c_str());
+        erase(&head, strBuffer.c_str());
         if (head == NULL) {
           head = createTrieNode();
         }
