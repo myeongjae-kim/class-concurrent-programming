@@ -59,10 +59,10 @@ bool finished;
 
 
 // This vector collects answers from localAnswers.
-std::vector < Answer > answers;
+std::vector < Answer > global_answers;
 
 // Every thread has its own answer vector for avoid locking.
-std::vector < Answer > localAnswers[THREAD_NUM];
+std::vector < Answer > local_answers[THREAD_NUM];
 
 // It stores already printed ID of words (wordID).
 std::unordered_set <uint32_t> printed;
@@ -72,7 +72,7 @@ std::unordered_set <uint32_t> printed;
 void* searchSubstring(void* arg) {
   const long tid = (const long)arg;
   Answer answerBuffer;
-  localAnswers[tid].clear();
+  local_answers[tid].clear();
 
   // Go to sleep right after it is made.
   pthread_mutex_lock(&condMutex[tid]);
@@ -126,7 +126,7 @@ void* searchSubstring(void* arg) {
           answerBuffer.patternID = trieNode->wordID;
 
           // and store it in the localAnswer vector.
-          localAnswers[tid].push_back(answerBuffer);
+          local_answers[tid].push_back(answerBuffer);
         }
 
         // go to next character of substring.
@@ -159,7 +159,7 @@ void searchAllPatterns(struct Trie* trieRoot, const char* strQuery, const uint32
 
   // initialize data structures.
   printed.clear();
-  answers.clear();
+  global_answers.clear();
 
 
   const char* end_of_query = strQuery + strLength;
@@ -174,11 +174,11 @@ void searchAllPatterns(struct Trie* trieRoot, const char* strQuery, const uint32
   // prepare arguments for theads
 
   uint32_t tid = 0;
-  for (uint32_t i = 0; i < THREAD_NUM && substringLocation < end_of_query; ++i) {
+  for (tid = 0; tid < THREAD_NUM && substringLocation < end_of_query; ++tid) {
     // If substringLocation is same or bigger than end_of_query,
-    // there is no substring for threads that its 'tid' is bigger thant current 'tid'.
+    //  there is no substring for threads.
+    // This happens when a size of query is smaller than the number of threads.
     
-    tid = i % THREAD_NUM;
     threadArgs[tid].substringLocation = substringLocation;
     threadArgs[tid].trieRoot = trieRoot;
     threadArgs[tid].searchLength = search_itertion_number;
@@ -186,17 +186,15 @@ void searchAllPatterns(struct Trie* trieRoot, const char* strQuery, const uint32
     substringLocation += search_itertion_number;
   }
 
-  // Run Threads
-
   // Wake up threads
-  // Thread reinit for start
-  for (uint32_t i = 0; i <= tid ; ++i) {
+  
+  // Thread reinit for wake up
+  for (uint32_t i = 0; i < tid ; ++i) {
     threadIsSleep[i] = false;
   }
 
-  // Wake up all threads to work
   // Don't wake up threads that does not have arguments.
-  for (uint32_t i = 0; i <= tid; ++i) {
+  for (uint32_t i = 0; i < tid; ++i) {
     pthread_mutex_lock(&condMutex[i]);
     pthread_cond_signal(&cond[i]);
     pthread_mutex_unlock(&condMutex[i]);
@@ -204,10 +202,14 @@ void searchAllPatterns(struct Trie* trieRoot, const char* strQuery, const uint32
 
 
   // Wait for all threads to finish work
+  // Belows waiting codes are TA's code.
+
+  // Iterate until all of threads are in sleep.
   while (1) {
     bool all_thread_done = true;
-    for (uint32_t i = 0; i <= tid; i++) {
+    for (uint32_t i = 0; i < tid; i++) {
       if (threadIsSleep[i] == false) {
+        // Not sleeping thread is found.
         all_thread_done = false;
         break;
       }
@@ -215,33 +217,39 @@ void searchAllPatterns(struct Trie* trieRoot, const char* strQuery, const uint32
     if (all_thread_done) {
       break;
     }
+
+    // Yield cpu resources to running thread.
     pthread_yield();
   }
-
-  // TODO:print
-  // sort answer vector
-  // check whether the answer was printed
-  // if answer is not printed, print answer and add to printed set
-  // clear printed set and answer vector
+  // The end of TA's code.
 
 
-  //collect answers
+  // Below is printing procedures.
+
+  // Psuedo code
+  // 1. Collect answers from local_answers vector and store answers to global_answer vector.
+  // 2. Sort global_answer vector
+  // 3. Iterate sorted global_answer and print the answers.
+  // 4. Check whether the answer was printed or not.
+  // 5. If answer is not printed, print answer and add its wordID to printed set
+
+
+  // 1. Collect answers from local_answers vector and store answers to global_answer vector.
   for (int i = 0; i < THREAD_NUM; ++i) {
-    for (auto answer : localAnswers[i]) {
-      answers.push_back(answer);
+    for (auto answer : local_answers[i]) {
+      global_answers.push_back(answer);
     }
     // reinitialize local answers when all answers are moved to global answers vector.
-    localAnswers[i].clear();
+    local_answers[i].clear();
   }
 
-  const char* printingTarget;
-  uint32_t size = answers.size();
+  uint32_t size = global_answers.size();
   if (size != 0) {
     // answer exists
-    // sort!
 
+    // 2. Sort global_answer vector
     // A lambda function is used as a callback function for sorting.
-    std::sort(answers.begin(), answers.end(), [](Answer lhs, Answer rhs){
+    std::sort(global_answers.begin(), global_answers.end(), [](Answer lhs, Answer rhs){
         // sort by substring's start location
         if (lhs.substringLocation < rhs.substringLocation) {
         return true;
@@ -259,13 +267,16 @@ void searchAllPatterns(struct Trie* trieRoot, const char* strQuery, const uint32
         });
 
 
+    // 3. Iterate sorted global_answer and print the answers.
+
     // The difference of printing first one and others is that
     // '|' is printed of not.
 
     // Print first one
-    const Answer& firstAnswer = answers[0];
+    const Answer& firstAnswer = global_answers[0];
     printed.insert(firstAnswer.patternID);
-    printingTarget = firstAnswer.substringLocation;
+
+    const char* printingTarget = firstAnswer.substringLocation;
     for (uint32_t i = 0; i < firstAnswer.length; ++i) {
       std::cout << *printingTarget;
 
@@ -274,8 +285,9 @@ void searchAllPatterns(struct Trie* trieRoot, const char* strQuery, const uint32
     }
 
     // Print the others
+    // Iterate global_answers vector.
     for (uint32_t i = 1; i < size; ++i) {
-      const Answer& answer = answers[i];
+      const Answer& answer = global_answers[i];
       if (printed.find(answer.patternID) == printed.end()) {
         printed.insert(answer.patternID);
         printingTarget = answer.substringLocation;
@@ -300,10 +312,10 @@ void searchAllPatterns(struct Trie* trieRoot, const char* strQuery, const uint32
 
 
 // This function returns true if it has at least one child node.
-bool childExist(const struct Trie* const trieNode) {
+bool childExist(const struct Trie* const trie_node) {
   //Check whether it has at least one child node.
   for (int i = 0; i < ALPHA_NUM; i++){
-    if (trieNode->chars[i]){
+    if (trie_node->chars[i]){
       return true;
     }
   }
