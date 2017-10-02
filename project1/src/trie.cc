@@ -15,9 +15,9 @@
 
 #include "trie.h"
 
-// Every words inserted to the trie structure has its own unique ID.
-// This variable is the uinque ID generator.
-uint32_t pattern_id = 1;
+// Every words inserted to the trie structure has its own unique word ID.
+// This variable is the uinque word ID generator.
+uint32_t word_id_generator = 1;
 
 // This function creates a trie node.
 struct trie* create_trie_node() {
@@ -27,24 +27,24 @@ struct trie* create_trie_node() {
 }
 
 // This function inserts a word to the trie structure iteratively.
-void insert(struct trie* *trie_root, const char* str)
+void insert(struct trie* *trie_root, const char* word_exploring_ptr)
 {
 	struct trie* trie_node = *trie_root;
-	while (*str)
+	while (*word_exploring_ptr)
 	{
     // check wheter the trie already has a character of current word.
-		if (trie_node->chars[*str - 'a'] == NULL){
+		if (trie_node->chars[*word_exploring_ptr - 'a'] == NULL){
       //if not, create
-			trie_node->chars[*str - 'a'] = create_trie_node();
+			trie_node->chars[*word_exploring_ptr - 'a'] = create_trie_node();
     }
 
     //go to next character node.
-		trie_node = trie_node->chars[*str - 'a'];
-		str++;
+		trie_node = trie_node->chars[*word_exploring_ptr - 'a'];
+		word_exploring_ptr++;
 	}
 
   // Every word has its unique ID. It is used not to print duplicated result.
-	trie_node->word_id = pattern_id++;
+	trie_node->word_id = word_id_generator++;
 }
 
 // This function returns true if it has at least one child node.
@@ -61,7 +61,7 @@ bool child_exist(const struct trie* const trie_node) {
 
 // This function erases a word in the trie structure.
 // It returns true if erasing is successful.
-bool erase(struct trie* *trie_node, const char* str) {
+bool erase(struct trie* *trie_node, const char* word_exploring_ptr) {
   // 'Target string' is a word that will be removed.
 
   // base case #1: Null node.
@@ -70,7 +70,7 @@ bool erase(struct trie* *trie_node, const char* str) {
   }
 
   // base case #2: On the end of the target string
-  if (*str == '\0' && (*trie_node)->word_id) {
+  if (*word_exploring_ptr == '\0' && (*trie_node)->word_id) {
     // If has no children
     if (!child_exist(*trie_node)) {
       // erasing is success.
@@ -91,17 +91,17 @@ bool erase(struct trie* *trie_node, const char* str) {
 
   // Recursively find target node.
   // check whether it has a node of next character of the target string or not
-  struct trie* *next_node = (*trie_node)->chars + *str - 'a';
+  struct trie* *next_node = (*trie_node)->chars + *word_exploring_ptr - 'a';
 
   // if it has a next node,
   if (next_node) {
 
     // erase next character of target string recursively.
-    bool erasing_is_successful = erase(next_node, str + 1);
+    bool erasing_is_successful = erase(next_node, word_exploring_ptr + 1);
 
     // If erase is success and we are on the middle of target string,
     // (the meaning of 'wordID == 0' is that we are not on the end of the target string)
-    if ( erasing_is_successful && (*trie_node)->word_id == 0) {
+    if (erasing_is_successful && (*trie_node)->word_id == 0) {
 
       // erase node if it has no children node.
       if (child_exist(*trie_node) == false) {
@@ -167,6 +167,7 @@ std::unordered_set <uint32_t> printed;
 
 // This function searches words at substrings of the query
 // and stores answers to local_answer vector.
+// This function is an argument of pthread_create().
 void* search_substring(void* arg) {
   const long tid = (const long)arg;
   answer_t answer_buffer;
@@ -190,7 +191,7 @@ void* search_substring(void* arg) {
     const struct trie* trie_node = data.trie_root;
 
     // This variable explores the query.
-    const char* query_exploring_pointer;
+    const char* query_exploring_ptr;
     for (
         // initialize counter
         uint32_t search_count = 0; 
@@ -204,12 +205,12 @@ void* search_substring(void* arg) {
         search_count++, data.substring_location++){
 
       /* Here is in the for loop */
-      // Set the pointer to the start of substring of the query
-      query_exploring_pointer = data.substring_location;
+      // Set the ptr to the start of substring of the query
+      query_exploring_ptr = data.substring_location;
 
       // to the end of the query
-      while (*query_exploring_pointer) {
-        trie_node = trie_node->chars[*query_exploring_pointer - 'a'];
+      while (*query_exploring_ptr) {
+        trie_node = trie_node->chars[*query_exploring_ptr - 'a'];
 
         if (trie_node == NULL) {
           // when the substring is not exist in the trie,
@@ -220,15 +221,15 @@ void* search_substring(void* arg) {
           // When a word is exist,
           // Add information to answerBuffer
           answer_buffer.substring_location = data.substring_location;
-          answer_buffer.length = (uint32_t)(query_exploring_pointer - data.substring_location) + 1;
-          answer_buffer.pattern_id = trie_node->word_id;
+          answer_buffer.length = (uint32_t)(query_exploring_ptr - data.substring_location) + 1;
+          answer_buffer.word_id = trie_node->word_id;
 
           // and store it in the localAnswer vector.
           local_answers[tid].push_back(answer_buffer);
         }
 
         // go to next character of substring.
-        query_exploring_pointer++;
+        query_exploring_ptr++;
       }
 
       // node reinitialization. Go to root.
@@ -250,8 +251,8 @@ void* search_substring(void* arg) {
 
 // This function prints all of found words.
 void search_all_patterns(struct trie* trie_root, 
-                          const char* str_query, 
-                          const uint32_t str_length) {
+                          const char* query, 
+                          const uint32_t query_length) {
   // return 0 if Trie is empty
   if (trie_root == NULL){
     return;
@@ -262,11 +263,11 @@ void search_all_patterns(struct trie* trie_root,
   global_answers.clear();
 
 
-  const char* end_of_query = str_query + str_length;
-  const char* substring_location = str_query;
+  const char* end_of_query = query + query_length;
+  const char* substring_location = query;
 
   // the number of iteration of each thread.
-  const uint32_t search_itertion_number = str_length / THREAD_NUM + 1;
+  const uint32_t search_itertion_number = query_length / THREAD_NUM + 1;
 
   // Do not wake up threads that does not have its own cake.
   // This happens when a string size is smaller that the number of threads.
@@ -336,7 +337,7 @@ void search_all_patterns(struct trie* trie_root,
 
   // 1. Collect answers from local_answers vector and store answers to global_answer vector.
   for (int i = 0; i < THREAD_NUM; ++i) {
-    for (auto answer : local_answers[i]) {
+    for (auto& answer : local_answers[i]) {
       global_answers.push_back(answer);
     }
     // reinitialize local answers when all answers are moved to global answers vector.
@@ -375,7 +376,7 @@ void search_all_patterns(struct trie* trie_root,
 
     // Print first one
     const answer_t& first_answer = global_answers[0];
-    printed.insert(first_answer.pattern_id);
+    printed.insert(first_answer.word_id);
 
     const char* printing_target = first_answer.substring_location;
     for (uint32_t i = 0; i < first_answer.length; ++i) {
@@ -389,8 +390,8 @@ void search_all_patterns(struct trie* trie_root,
     // Iterate global_answers vector.
     for (uint32_t i = 1; i < size; ++i) {
       const answer_t& answer = global_answers[i];
-      if (printed.find(answer.pattern_id) == printed.end()) {
-        printed.insert(answer.pattern_id);
+      if (printed.find(answer.word_id) == printed.end()) {
+        printed.insert(answer.word_id);
         printing_target = answer.substring_location;
         std::cout << '|';
         for (uint32_t j = 0; j < answer.length; ++j) {

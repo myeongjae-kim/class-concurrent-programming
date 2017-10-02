@@ -30,7 +30,7 @@
 typedef struct _answer {
   const char* substring_location;
   uint32_t length;
-  uint32_t pattern_id;
+  uint32_t word_id;
 } answer_t;
 
 
