@@ -1,13 +1,19 @@
-#include <iostream>
+/** Metadata
+ * Author               : Kim, Myeong Jae
+ * File Name            : trie.cc
+ * Due date             : 2017-10-01
+ * Compilation Standard : c++11 */
 
 #include <cstdlib>
 #include <cstdint>
 #include <cstring>
-#include <algorithm>
-#include "trie.h"
 
 #include <vector>
+#include <iostream>
+#include <algorithm>
 #include <unordered_set>
+
+#include "trie.h"
 
 // Every words inserted to the trie structure has its own unique ID.
 // This variable is the uinque ID generator.
@@ -21,7 +27,7 @@ struct trie* create_trie_node() {
 }
 
 // This function inserts a word to the trie structure iteratively.
-void insert(struct trie* *trie_root, char* str)
+void insert(struct trie* *trie_root, const char* str)
 {
 	struct trie* trie_node = *trie_root;
 	while (*str)
@@ -41,8 +47,99 @@ void insert(struct trie* *trie_root, char* str)
 	trie_node->word_id = pattern_id++;
 }
 
-// Variables for parallelizing.
+// This function returns true if it has at least one child node.
+bool child_exist(const struct trie* const trie_node) {
+  //Check whether it has at least one child node.
+  for (int i = 0; i < ALPHA_NUM; i++){
+    if (trie_node->chars[i]){
+      return true;
+    }
+  }
 
+  return false;
+}
+
+// This function erases a word in the trie structure.
+// It returns true if erasing is successful.
+bool erase(struct trie* *trie_node, const char* str) {
+  // 'Target string' is a word that will be removed.
+
+  // base case #1: Null node.
+  if (*trie_node == NULL){
+    return false;
+  }
+
+  // base case #2: On the end of the target string
+  if (*str == '\0' && (*trie_node)->word_id) {
+    // If has no children
+    if (!child_exist(*trie_node)) {
+      // erasing is success.
+
+      // remove and nullify.
+      free(*trie_node);
+      (*trie_node) = NULL;
+      return true;
+    } else {
+      // when it is not a leaf node
+      // do not remove. just makes wordID zero.
+      (*trie_node)->word_id = 0;
+      return false;
+    }
+  }
+
+  // Below is recurion process.
+
+  // Recursively find target node.
+  // check whether it has a node of next character of the target string or not
+  struct trie* *next_node = (*trie_node)->chars + *str - 'a';
+
+  // if it has a next node,
+  if (next_node) {
+
+    // erase next character of target string recursively.
+    bool erasing_is_successful = erase(next_node, str + 1);
+
+    // If erase is success and we are on the middle of target string,
+    // (the meaning of 'wordID == 0' is that we are not on the end of the target string)
+    if ( erasing_is_successful && (*trie_node)->word_id == 0) {
+
+      // erase node if it has no children node.
+      if (child_exist(*trie_node) == false) {
+        free(*trie_node);
+        (*trie_node) = NULL;
+        return true;
+      } else {
+        return false;
+      }
+    }
+  }
+
+  return false;
+}
+
+
+// This function recursively free all allocated memories.
+void erase_all(struct trie* *trie_node) {
+  // If the node is exist
+  if (*trie_node) {
+
+    // find child node and free it
+    for (int i = 0; i < ALPHA_NUM; ++i) {
+      if ((*trie_node)->chars[i] != nullptr) {
+        erase_all((*trie_node)->chars + i);
+      }
+    }
+
+    // Current node does not have children.
+    // Free current node.
+    free(*trie_node);
+    *trie_node = nullptr;
+  }
+}
+
+
+
+// Variables for parallelizing.
 // for conditional sleep and wake up threads.
 pthread_cond_t cond[THREAD_NUM];
 pthread_mutex_t cond_mutex[THREAD_NUM];
@@ -68,7 +165,8 @@ std::vector < answer_t > local_answers[THREAD_NUM];
 std::unordered_set <uint32_t> printed;
 
 
-// This is a function that a thread executes.
+// This function searches words at substrings of the query
+// and stores answers to local_answer vector.
 void* search_substring(void* arg) {
   const long tid = (const long)arg;
   answer_t answer_buffer;
@@ -150,8 +248,10 @@ void* search_substring(void* arg) {
   return nullptr;
 }
 
-void search_all_patterns(struct trie* trie_root, const char* str_query, const uint32_t str_length)
-{
+// This function prints all of found words.
+void search_all_patterns(struct trie* trie_root, 
+                          const char* str_query, 
+                          const uint32_t str_length) {
   // return 0 if Trie is empty
   if (trie_root == NULL){
     return;
@@ -311,92 +411,3 @@ void search_all_patterns(struct trie* trie_root, const char* str_query, const ui
   return;
 }
 
-
-// This function returns true if it has at least one child node.
-bool child_exist(const struct trie* const trie_node) {
-  //Check whether it has at least one child node.
-  for (int i = 0; i < ALPHA_NUM; i++){
-    if (trie_node->chars[i]){
-      return true;
-    }
-  }
-
-  return false;
-}
-
-// This function erases a word in the trie structure. It returns true if erasing is successful.
-bool erase(struct trie* *trie_node, const char* str) {
-  // 'Target string' is a word that will be removed.
-
-  // base case #1: Null node.
-  if (*trie_node == NULL){
-    return false;
-  }
-
-  // base case #2: On the end of the target string
-  if (*str == '\0' && (*trie_node)->word_id) {
-    // If has no children
-    if (!child_exist(*trie_node)) {
-      // erasing is success.
-
-      // remove and nullify.
-      free(*trie_node);
-      (*trie_node) = NULL;
-      return true;
-    } else {
-      // when it is not a leaf node
-      // do not remove. just makes wordID zero.
-      (*trie_node)->word_id = 0;
-      return false;
-    }
-  }
-
-  // Below is recurion process.
-
-  // Recursively find target node.
-  // check whether it has a node of next character of the target string or not
-  struct trie* *next_node = (*trie_node)->chars + *str - 'a';
-
-  // if it has a next node,
-  if (next_node) {
-
-    // erase next character of target string recursively.
-    bool erasing_is_successful = erase(next_node, str + 1);
-
-    // If erase is success and we are on the middle of target string,
-    // (the meaning of 'wordID == 0' is that we are not on the end of the target string)
-    if ( erasing_is_successful && (*trie_node)->word_id == 0) {
-
-      // erase node if it has no children node.
-      if (child_exist(*trie_node) == false) {
-        free(*trie_node);
-        (*trie_node) = NULL;
-        return true;
-      } else {
-        return false;
-      }
-    }
-  }
-
-  return false;
-}
-
-
-// This function recursively free all allocated memories.
-void erase_all(struct trie* *trie_node) {
-  // If the node is exist
-  if (*trie_node) {
-
-    // find child node and free it
-    for (int i = 0; i < ALPHA_NUM; ++i) {
-      if ((*trie_node)->chars[i] != nullptr) {
-        erase_all((*trie_node)->chars + i);
-      }
-    }
-
-    // Current node does not have children.
-    // Free current node.
-    free(*trie_node);
-    *trie_node = nullptr;
-  }
-}

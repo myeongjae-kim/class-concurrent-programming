@@ -1,25 +1,47 @@
+/** Metadata
+ * Author               : Kim, Myeong Jae
+ * File Name            : main.cc
+ * Due date             : 2017-10-01
+ * Compilation Standard : c++11 */
+
+
+/* A simple design document.
+ *
+ * Every input is stored at a trie data structure.
+ *
+ * For each query, all of its substring is searched
+ *   to find words in the trie data structure.
+ *
+ *   e.g.) When a query is 'applepen'
+ *
+ *   applepen
+ *   pplepen
+ *   plepen
+ *   lepen
+ *   epen
+ *   pen
+ *   en
+ *   n
+ *
+ *   Eight substring is searched.
+ *
+ *   In the worst case, the required time is O(m^2)
+ *   (m is a length of a query) */
+
+
 #include "trie.h"
 
 #include <iostream>
 
 #define RESERVED_CAPACITY 1024
 
-
-extern pthread_cond_t cond[THREAD_NUM];
-extern pthread_mutex_t cond_mutex[THREAD_NUM];
-
-extern pthread_t threads[THREAD_NUM];
-extern thread_arg_t thread_args[THREAD_NUM];
-extern bool thread_is_sleep[THREAD_NUM];
-
-extern void* search_substring(void* arg);
-
-extern bool finished;
-
 int main(void)
 {
+  // Disable IO sync with libc.
+  // This makes huge speed up.
   std::ios::sync_with_stdio(false);
 
+  // get the number of the initial inputs.
   int number_of_strings = 0;
   std::cin >> number_of_strings;
 
@@ -27,43 +49,53 @@ int main(void)
   std::string str_buffer;
   str_buffer.reserve(RESERVED_CAPACITY);
 
+  // Create the trie.
   struct trie* root = create_trie_node();
+  // Get inputs from stdio and insert it to the trie.
   for (int i = 0; i < number_of_strings; ++i) {
     std::cin >> str_buffer;
     insert(&root, (char*)str_buffer.c_str());
   }
 
-  // initializing cond and mutex
+  // initializing conds and mutexes.
   for (int i = 0; i < THREAD_NUM; ++i) {
     pthread_cond_init(&cond[i], NULL);
     cond_mutex[i] = PTHREAD_MUTEX_INITIALIZER;
   }
+
+  // Set finished false.
+  // It will be true at the end of wordloads.
   finished = false;
 
+  // create threads
   for (long i = 0; i < THREAD_NUM; i++) {
-    // create threads
     thread_is_sleep[i] = false;
     if (pthread_create(&threads[i], 0, search_substring, (void*)i) < 0) {
-      std::cout << "thread create has been failed." << std::endl;
+      std::cout << "(main) thread creation has been failed." << std::endl;
       return 0;
     }
 
-    // wait for thread sleep
+    // wait for sleep
     while (thread_is_sleep[i] == false) {
       pthread_yield();
     }
   }
 
-
+  // Initialization finished.
+  // Get workloads.
   std::cout << 'R' << std::endl;
 
   // To the end of stdin
   char cmd;
   while (1) {
-    if ( !(std::cin >> cmd)) {
+
+    if ( !(std::cin >> cmd) ) {
+      // below instruction are executed when 'EOF' is inputted.
+
+      // turn on 'finished' to destory all threads.
       finished = true;
 
-      // Wake up all threads to terminate
+      // Wake up all threads to be terminated
       for (int i = 0; i < THREAD_NUM; ++i) {
         pthread_mutex_lock(&cond_mutex[i]);
         pthread_cond_broadcast(&cond[i]);
@@ -72,20 +104,25 @@ int main(void)
       break;
     }
 
+    // Remove space bar between a command and a argument.
     std::cin.get();
 
     // get argument
     getline(std::cin, str_buffer);
     switch (cmd) {
       case 'Q':
-        search_all_patterns(root, (char*)str_buffer.c_str(), str_buffer.length());
-        // setWasPrintedFalse(head);
+        // Do searching
+        search_all_patterns(root, str_buffer.c_str(), str_buffer.length());
         break;
       case 'A':
-        insert(&root, (char*)str_buffer.c_str());
+        // Add new word to the trie.
+        insert(&root, str_buffer.c_str());
         break;
       case 'D':
+        // Delete a word in the trie.
         erase(&root, str_buffer.c_str());
+
+        // If root is removed, recreate it.
         if (root == NULL) {
           root = create_trie_node();
         }
@@ -100,7 +137,6 @@ int main(void)
 #endif
     }
   }
-
 
   // Wait threads end
   for (int i = 0; i < THREAD_NUM; i++) {
