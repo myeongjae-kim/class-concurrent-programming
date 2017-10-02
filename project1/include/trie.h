@@ -23,7 +23,7 @@ struct Trie
 };
 
 typedef struct _Answer {
-  const char* startAdr;
+  const char* substringLocation;
   uint32_t length;
   uint32_t patternID;
 } Answer;

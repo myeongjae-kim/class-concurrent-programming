@@ -84,61 +84,57 @@ void* searchSubstring(void* arg) {
   while (!finished) {
     // waken up!
 
-    // If thread is in sleep, go to sleep
-    if (threadIsSleep[tid] == false) {
+    // Get data from thread arguments.
+    // Use local variable to avoid point referencing overhead of arguments.
+    ThreadArg data = threadArgs[tid];
 
-      // Get data from thread arguments.
-      // Use local variable to avoid point referencing overhead of arguments.
-      ThreadArg data = threadArgs[tid];
+    // This variable explores the trie structure
+    const struct Trie* trieNode = data.trieRoot;
 
-      // This variable explores the trie structure
-      const struct Trie* trieNode = data.trieRoot;
+    // This variable explores the query.
+    const char* exploringQueryPointer;
+    for (
+        // initialize counter
+        uint32_t searchCount = 0; 
 
-      // This variable explores the query.
-      const char* exploringQueryPointer;
-      for (
-          // initialize counter
-          uint32_t searchCount = 0; 
+        // condition:
+        // Search counter is smaller than search length,
+        // and substring's first character is not on the end of the query.
+        searchCount < data.searchLength && *data.substringLocation;
 
-          // condition:
-          // Search counter is smaller than search length
-          // and substring's first character is not on the end of the query.
-          searchCount < data.searchLength && *data.substringLocation;
+        // increasing variable for every iteration.
+        searchCount++, data.substringLocation++){
 
-          // increasing variable for every iteration.
-          searchCount++, data.substringLocation++){
+      /* Here is in the for loop */
+      // Set the pointer to the start of substring of the query
+      exploringQueryPointer = data.substringLocation;
 
-        /* Here is in the for loop */
-        // Set the pointer to the start of substring of the query
-        exploringQueryPointer = data.substringLocation;
+      // to the end of the query
+      while (*exploringQueryPointer) {
+        trieNode = trieNode->chars[*exploringQueryPointer - 'a'];
 
-        // to the end of the query
-        while (*exploringQueryPointer) {
-          trieNode = trieNode->chars[*exploringQueryPointer - 'a'];
+        if (trieNode == NULL) {
+          // when the substring is not exist in the trie,
+          // finish current search and go to next character of the query and search again.
+          trieNode = data.trieRoot;
+          break;
+        } else if (trieNode -> wordID) {
+          // When a word is exist,
+          // Add information to answerBuffer
+          answerBuffer.substringLocation = data.substringLocation;
+          answerBuffer.length = (uint32_t)(exploringQueryPointer - data.substringLocation) + 1;
+          answerBuffer.patternID = trieNode->wordID;
 
-          if (trieNode == NULL) {
-            // when the substring is not exist in the trie,
-            // finish current search and go to next character of the query and search again.
-            trieNode = data.trieRoot;
-            break;
-          } else if (trieNode -> wordID) {
-            // When a word is exist,
-            // Add information to answerBuffer
-            answerBuffer.startAdr = data.substringLocation;
-            answerBuffer.length = (uint32_t)(exploringQueryPointer - data.substringLocation) + 1;
-            answerBuffer.patternID = trieNode->wordID;
-
-            // and store it in the localAnswer vector.
-            localAnswers[tid].push_back(answerBuffer);
-          }
-
-          // go to next character of substring.
-          exploringQueryPointer++;
+          // and store it in the localAnswer vector.
+          localAnswers[tid].push_back(answerBuffer);
         }
 
-        // node reinitialization. Go to root.
-        trieNode = data.trieRoot;
+        // go to next character of substring.
+        exploringQueryPointer++;
       }
+
+      // node reinitialization. Go to root.
+      trieNode = data.trieRoot;
     }
 
     // search is finished.
@@ -166,7 +162,7 @@ void searchAllPatterns(struct Trie* trieRoot, const char* strQuery, const uint32
   answers.clear();
 
 
-  const char* endOfString = strQuery + strLength;
+  const char* end_of_query = strQuery + strLength;
   const char* substringLocation = strQuery;
 
   // the number of iteration of each thread.
@@ -176,8 +172,12 @@ void searchAllPatterns(struct Trie* trieRoot, const char* strQuery, const uint32
   // This happens when a string size is smaller that the number of threads.
 
   // prepare arguments for theads
+
   uint32_t tid = 0;
-  for (uint32_t i = 0; i < THREAD_NUM && substringLocation < endOfString; ++i) {
+  for (uint32_t i = 0; i < THREAD_NUM && substringLocation < end_of_query; ++i) {
+    // If substringLocation is same or bigger than end_of_query,
+    // there is no substring for threads that its 'tid' is bigger thant current 'tid'.
+    
     tid = i % THREAD_NUM;
     threadArgs[tid].substringLocation = substringLocation;
     threadArgs[tid].trieRoot = trieRoot;
@@ -187,7 +187,7 @@ void searchAllPatterns(struct Trie* trieRoot, const char* strQuery, const uint32
   }
 
   // Run Threads
-  
+
   // Wake up threads
   // Thread reinit for start
   for (uint32_t i = 0; i <= tid ; ++i) {
@@ -243,9 +243,9 @@ void searchAllPatterns(struct Trie* trieRoot, const char* strQuery, const uint32
     // A lambda function is used as a callback function for sorting.
     std::sort(answers.begin(), answers.end(), [](Answer lhs, Answer rhs){
         // sort by substring's start location
-        if (lhs.startAdr < rhs.startAdr) {
+        if (lhs.substringLocation < rhs.substringLocation) {
         return true;
-        } else if (lhs.startAdr > rhs.startAdr) {
+        } else if (lhs.substringLocation > rhs.substringLocation) {
         return false;
         } else {
         // if substring's start location is same,
@@ -265,7 +265,7 @@ void searchAllPatterns(struct Trie* trieRoot, const char* strQuery, const uint32
     // Print first one
     const Answer& firstAnswer = answers[0];
     printed.insert(firstAnswer.patternID);
-    printingTarget = firstAnswer.startAdr;
+    printingTarget = firstAnswer.substringLocation;
     for (uint32_t i = 0; i < firstAnswer.length; ++i) {
       std::cout << *printingTarget;
 
@@ -278,7 +278,7 @@ void searchAllPatterns(struct Trie* trieRoot, const char* strQuery, const uint32
       const Answer& answer = answers[i];
       if (printed.find(answer.patternID) == printed.end()) {
         printed.insert(answer.patternID);
-        printingTarget = answer.startAdr;
+        printingTarget = answer.substringLocation;
         std::cout << '|';
         for (uint32_t j = 0; j < answer.length; ++j) {
           std::cout << *printingTarget;
