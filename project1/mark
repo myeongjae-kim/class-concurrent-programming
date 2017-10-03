@@ -1,3 +1,0 @@
-cd /home/os/multicore_programming/project1
-make
-~/ref_codes/marker/marker ~/ref_codes/marker/tiny.init ~/ref_codes/marker/tiny.work ~/ref_codes/marker/tiny.result ./run
