@@ -26,7 +26,11 @@
  *   Eight substring is searched.
  *
  *   In the worst case, the required time is O(m^2)
- *   (m is a length of a query) */
+ *   (m is a length of a query) 
+ *
+ *   The deatiled documents are in the wiki.
+ *
+ *   */
 
 
 #include "trie.h"
