@@ -140,13 +140,14 @@ void erase_all(struct trie* *trie_node) {
 
 
 // Variables for parallelizing.
-// for conditional sleep and wake up threads.
-pthread_cond_t cond[THREAD_NUM];
-pthread_mutex_t cond_mutex[THREAD_NUM];
 
 // Threads and thread arguments.
 pthread_t threads[THREAD_NUM];
 thread_arg_t thread_args[THREAD_NUM];
+
+// for conditional sleep and wake up threads.
+pthread_cond_t cond[THREAD_NUM];
+pthread_mutex_t cond_mutex[THREAD_NUM];
 
 // It shows whether a thread is in sleep or not.
 bool thread_is_sleep[THREAD_NUM];
@@ -337,7 +338,7 @@ void search_all_patterns(struct trie* trie_root,
 
   // 1. Collect answers from local_answers vector and store answers to global_answer vector.
   for (int i = 0; i < THREAD_NUM; ++i) {
-    for (auto& answer : local_answers[i]) {
+    for (auto answer : local_answers[i]) {
       global_answers.push_back(answer);
     }
     // reinitialize local answers when all answers are moved to global answers vector.
@@ -375,7 +376,7 @@ void search_all_patterns(struct trie* trie_root,
     // '|' is printed of not.
 
     // Print first one
-    const answer_t& first_answer = global_answers[0];
+    const answer_t first_answer = global_answers[0];
     printed.insert(first_answer.word_id);
 
     const char* printing_target = first_answer.substring_location;
@@ -389,7 +390,7 @@ void search_all_patterns(struct trie* trie_root,
     // Print the others
     // Iterate global_answers vector.
     for (uint32_t i = 1; i < size; ++i) {
-      const answer_t& answer = global_answers[i];
+      const answer_t answer = global_answers[i];
       if (printed.find(answer.word_id) == printed.end()) {
         printed.insert(answer.word_id);
         printing_target = answer.substring_location;
