@@ -281,8 +281,8 @@ void search_all_patterns(struct trie* trie_root,
     //  there is no substring for threads.
     // This happens when a size of query is smaller than the number of threads.
     
-    thread_args[tid].substring_location = substring_location;
     thread_args[tid].trie_root = trie_root;
+    thread_args[tid].substring_location = substring_location;
     thread_args[tid].search_length = search_itertion_number;
 
     substring_location += search_itertion_number;
