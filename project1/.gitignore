@@ -4,3 +4,7 @@
 *.old
 run
 tiny.*
+testcases
+mark*
+*.sh
+rn
