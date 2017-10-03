@@ -55,7 +55,7 @@ int main(void)
 
   // Create the trie.
   struct trie* root = create_trie_node();
-  // Get inputs from stdio and insert it to the trie.
+  // Get inputs from stdin and insert it to the trie.
   for (int i = 0; i < number_of_strings; ++i) {
     std::cin >> str_buffer;
     insert(&root, (char*)str_buffer.c_str());

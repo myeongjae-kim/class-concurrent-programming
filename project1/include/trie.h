@@ -39,9 +39,9 @@ typedef struct _answer {
 struct trie
 {
   /* It is zero when character is not the end of a word. */
-	int word_id;	
+  int word_id;  
 
-	struct trie* chars[ALPHA_NUM];
+  struct trie* chars[ALPHA_NUM];
 };
 
 // This function creates a trie node.

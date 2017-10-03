@@ -22,29 +22,29 @@ uint32_t word_id_generator = 1;
 // This function creates a trie node.
 struct trie* create_trie_node() {
   // create new node
-	struct trie* node = (struct trie*)calloc(1, sizeof(*node));
-	return node;
+  struct trie* node = (struct trie*)calloc(1, sizeof(*node));
+  return node;
 }
 
 // This function inserts a word to the trie structure iteratively.
 void insert(struct trie* *trie_root, const char* word_exploring_ptr)
 {
-	struct trie* trie_node = *trie_root;
-	while (*word_exploring_ptr)
-	{
+  struct trie* trie_node = *trie_root;
+  while (*word_exploring_ptr)
+  {
     // check wheter the trie already has a character of current word.
-		if (trie_node->chars[*word_exploring_ptr - 'a'] == NULL){
+    if (trie_node->chars[*word_exploring_ptr - 'a'] == NULL){
       //if not, create
-			trie_node->chars[*word_exploring_ptr - 'a'] = create_trie_node();
+      trie_node->chars[*word_exploring_ptr - 'a'] = create_trie_node();
     }
 
     //go to next character node.
-		trie_node = trie_node->chars[*word_exploring_ptr - 'a'];
-		word_exploring_ptr++;
-	}
+    trie_node = trie_node->chars[*word_exploring_ptr - 'a'];
+    word_exploring_ptr++;
+  }
 
   // Every word has its unique ID. It is used not to print duplicated result.
-	trie_node->word_id = word_id_generator++;
+  trie_node->word_id = word_id_generator++;
 }
 
 // This function returns true if it has at least one child node.
