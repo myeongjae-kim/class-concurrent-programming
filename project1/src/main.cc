@@ -124,6 +124,7 @@ int main(void)
         break;
       case 'D':
         // Delete a word in the trie.
+        // std::cout << erase(&root, str_buffer.c_str()) << std::endl;
         erase(&root, str_buffer.c_str());
 
         // If root is removed, recreate it.

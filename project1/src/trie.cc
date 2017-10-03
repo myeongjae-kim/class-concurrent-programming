@@ -64,53 +64,53 @@ bool child_exist(const struct trie* const trie_node) {
 bool erase(struct trie* *trie_node, const char* word_exploring_ptr) {
   // 'Target string' is a word that will be removed.
 
-  // base case #1: Null node.
+  // Base case #1: Null node.
   if (*trie_node == NULL){
     return false;
   }
 
-  // base case #2: On the end of the target string
+  // Base case #2: On the end of the target string
   if (*word_exploring_ptr == '\0' && (*trie_node)->word_id) {
     // If has no children
     if (!child_exist(*trie_node)) {
-      // erasing is success.
+      // erasing is successful.
 
       // remove and nullify.
       free(*trie_node);
       (*trie_node) = NULL;
-      return true;
     } else {
       // when it is not a leaf node
       // do not remove. just makes wordID zero.
       (*trie_node)->word_id = 0;
-      return false;
     }
+    return true;
   }
 
   // Below is recurion process.
 
   // Recursively find target node.
-  // check whether it has a node of next character of the target string or not
+  // Check whether it has a node of next character of the target string or not
   struct trie* *next_node = (*trie_node)->chars + *word_exploring_ptr - 'a';
 
   // if it has a next node,
   if (next_node) {
-
+    
     // erase next character of target string recursively.
-    bool erasing_is_successful = erase(next_node, word_exploring_ptr + 1);
+    if (erase(next_node, word_exploring_ptr + 1)) {
+      // Erasing is successful 
+      
+      // If we are on the end of another word, do nothing.
+      // We should not free current node.
+      if ((*trie_node)->word_id == 0 
 
-    // If erase is success and we are on the middle of target string,
-    // (the meaning of 'wordID == 0' is that we are not on the end of the target string)
-    if (erasing_is_successful && (*trie_node)->word_id == 0) {
+      // If we are not on the end of another word,
+      // erase node if it has no child node.
+          && child_exist(*trie_node) == false) {
 
-      // erase node if it has no children node.
-      if (child_exist(*trie_node) == false) {
         free(*trie_node);
         (*trie_node) = NULL;
-        return true;
-      } else {
-        return false;
       }
+      return true;
     }
   }
 
@@ -148,7 +148,7 @@ pthread_mutex_t cond_mutex[THREAD_NUM];
 pthread_t threads[THREAD_NUM];
 thread_arg_t thread_args[THREAD_NUM];
 
-// It shows whether a thread is in sleep of not.
+// It shows whether a thread is in sleep or not.
 bool thread_is_sleep[THREAD_NUM];
 
 // If it is true, threads will be terminated.

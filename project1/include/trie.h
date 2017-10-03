@@ -39,7 +39,7 @@ typedef struct _answer {
 struct trie
 {
   /* It is zero when character is not the end of a word. */
-  int word_id;  
+  uint32_t word_id;  
 
   struct trie* chars[ALPHA_NUM];
 };
