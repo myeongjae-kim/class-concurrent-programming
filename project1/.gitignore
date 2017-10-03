@@ -8,3 +8,4 @@ testcases
 mark*
 *.sh
 rn
+.clang_complete
