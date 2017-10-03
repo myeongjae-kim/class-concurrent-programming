@@ -68,7 +68,7 @@ int main(void)
   }
 
   // Set finished false.
-  // It will be true at the end of wordloads.
+  // It will be true at the end of workloads.
   finished = false;
 
   // create threads
