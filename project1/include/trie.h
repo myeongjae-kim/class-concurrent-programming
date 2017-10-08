@@ -36,33 +36,37 @@ typedef struct _answer {
 
 
 // Trie data structure
+// Design Document 4.1.1
 struct trie
 {
   /* It is zero when character is not the end of a word. */
   uint32_t word_id;  
-
   struct trie* chars[ALPHA_NUM];
 };
 
 // This function creates a trie node.
 // (Memory Allocation)
+// Design Document 4.1.2
 struct trie* create_trie_node();
 
-// This function destory whole trie strucutre.
-// (Memory deallocation)
-void erase_all(struct trie* *trie_node);
-
 // This function inserts a word to the trie structure iteratively.
+// Design Document 4.1.3
 void insert(struct trie* *trie_head, const char* str);
 
 // This function erases a word in the trie structure.
 // It returns true if erasing is successful.
+// Design Document 4.1.5
 bool erase(struct trie* *trie_node, const char* str);
 
 
+// This function destory whole trie strucutre.
+// (Memory deallocation)
+// Design Document 4.1.6
+void erase_all(struct trie* *trie_node);
 
 
 // This function prints all of found words.
+// Design Document 4.2
 void search_all_patterns(struct trie* trie_root,
     const char* str_query,
     const uint32_t str_length);
@@ -78,6 +82,7 @@ void search_all_patterns(struct trie* trie_root,
 // 'trie_root' is a root of trie data structure.
 // 'substring_location' is a substring of the query.
 // 'search_length' is the number of substrings that a thread should search.
+// Design Document 4.2.3
 typedef struct _thread_arg {
   struct trie* trie_root; // this value could be a global variable.
   const char* substring_location;

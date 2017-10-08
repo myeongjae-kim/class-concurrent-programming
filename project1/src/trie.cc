@@ -17,9 +17,11 @@
 
 // Every words inserted to the trie structure has its own unique word ID.
 // This variable is the uinque word ID generator.
+// Design Document 4.1.3
 uint32_t word_id_generator = 1;
 
 // This function creates a trie node.
+// Design Document 4.1.2
 struct trie* create_trie_node() {
   // create new node
   struct trie* node = (struct trie*)calloc(1, sizeof(*node));
@@ -27,6 +29,7 @@ struct trie* create_trie_node() {
 }
 
 // This function inserts a word to the trie structure iteratively.
+// Design Document 4.1.3
 void insert(struct trie* *trie_root, const char* word_exploring_ptr)
 {
   struct trie* trie_node = *trie_root;
@@ -48,6 +51,7 @@ void insert(struct trie* *trie_root, const char* word_exploring_ptr)
 }
 
 // This function returns true if it has at least one child node.
+// Design Document 4.1.4
 bool child_exist(const struct trie* const trie_node) {
   //Check whether it has at least one child node.
   for (int i = 0; i < ALPHA_NUM; i++){
@@ -61,6 +65,7 @@ bool child_exist(const struct trie* const trie_node) {
 
 // This function erases a word in the trie structure.
 // It returns true if erasing is successful.
+// Design Document 4.1.5
 bool erase(struct trie* *trie_node, const char* word_exploring_ptr) {
   // 'Target string' is a word that will be removed.
 
@@ -119,6 +124,7 @@ bool erase(struct trie* *trie_node, const char* word_exploring_ptr) {
 
 
 // This function recursively free all allocated memories.
+// Design Document 4.1.6
 void erase_all(struct trie* *trie_node) {
   // If the node is exist
   if (*trie_node) {
@@ -140,6 +146,7 @@ void erase_all(struct trie* *trie_node) {
 
 
 // Variables for parallelizing.
+// Design Document 4.2.3
 
 // Threads and thread arguments.
 pthread_t threads[THREAD_NUM];
@@ -169,6 +176,7 @@ std::unordered_set <uint32_t> printed;
 // This function searches words at substrings of the query
 // and stores answers to local_answer vector.
 // This function is an argument of pthread_create().
+// Design Document 4.2.2.2
 void* search_substring(void* arg) {
   const long tid = (const long)arg;
   answer_t answer_buffer;
@@ -251,6 +259,7 @@ void* search_substring(void* arg) {
 }
 
 // This function prints all of found words.
+// Design Document 4.2.2.1
 void search_all_patterns(struct trie* trie_root, 
                           const char* query, 
                           const uint32_t query_length) {
