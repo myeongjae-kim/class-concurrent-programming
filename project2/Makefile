@@ -4,7 +4,9 @@ CC = g++
 CXXFLAGS = -Wall -Wextra -Wpedantic -std=c++11 -ltcmalloc_minimal -O3
 
 # Macros specifying path for compile.
-SRCS := $(wildcard src/*.cc)
+
+# SRCS := $(wildcard src/*.cc)
+SRCS := $(wildcard src/*[^(_test)].cc) # exclue test sources
 OBJS := $(SRCS:.cc=.o)
 # BIN = ./bin/
 BIN = ./
@@ -21,4 +23,4 @@ $(TARGET): $(OBJS)
 
 # Delete binary & object files.
 clean:
-	rm $(BIN)$(TARGET) $(OBJS)
+	rm $(BIN)$(TARGET) $(OBJS) thread*.txt

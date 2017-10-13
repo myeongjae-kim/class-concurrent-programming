@@ -13,6 +13,8 @@
 
 #include <pthread.h>
 #include "main.h"
+#include "transaction.h"
+#include "directed_graph.h"
 
 /* global variables */
 
@@ -25,16 +27,21 @@ log_t* thread_logs;
 int64_t *records;
 
 std::queue<wait_q_elem_t> *record_wait_queues;
-// TODO: wait-for graph implementation
 
+// graph for detecting deadlock
+directed_graph *wait_for_graph;
 
 uint64_t timestamp = 0; // for deadlock situation. transaction killing order
 uint64_t global_execution_order = 0;
 
 pthread_mutex_t global_mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_rwlock_t rw_lock;
+pthread_rwlock_t *rw_lock;
 
 //TODO: commit and rollback implementation. how??
+
+
+void initialize_global_variables();
+void deallocate_global_variables();
 
 int main(const int argc, const char * const argv[])
 {
@@ -64,11 +71,36 @@ int main(const int argc, const char * const argv[])
   std::cout << "record: " << R << std::endl;
   std::cout << "max_execution_num: " << E << std::endl;
 #endif
+  initialize_global_variables();
 
+  for (uint64_t i = 0; i < N; i++) {
+    if (pthread_create(&threads[i], 0, transaction, (void*)i) < 0) {
+      std::cout << "(main) thread creation has been failed." << std::endl;
+      deallocate_global_variables();
+      return 1;
+    }
+  }
+
+
+  for (uint64_t i = 0; i < N; i++) {
+    pthread_join(threads[i], NULL);
+  }
+
+
+  deallocate_global_variables();
+  return 0;
+}
+
+void initialize_global_variables() {
   // lock initialization
-  if (pthread_rwlock_init(&rw_lock, NULL) != 0) {
-    std::cout << "(main) rwlock_init is failed." << std::endl;
-    return EXIT_FAILURE;
+  
+  rw_lock = (pthread_rwlock_t*)malloc(R * sizeof(*rw_lock));
+  assert(rw_lock != nullptr);
+  for (uint64_t i = 0; i < R; ++i) {
+    if (pthread_rwlock_init(&rw_lock[i], NULL) != 0) {
+      std::cout << "(main) rwlock_init is failed." << std::endl;
+      exit(EXIT_FAILURE);
+    }
   }
 
   // memory allocation
@@ -80,21 +112,29 @@ int main(const int argc, const char * const argv[])
   records = (int64_t*)malloc(R * sizeof(*records));
   assert(records != nullptr);
 
+  for (uint64_t i = 0; i < R; ++i) {
+    records[i] = 100;
+  }
+
+
   record_wait_queues = new std::queue<wait_q_elem_t>[R];
   assert(record_wait_queues != nullptr);
 
+  wait_for_graph = new directed_graph(N);
+}
 
-
-
-
-
+void deallocate_global_variables() {
   // Free allocated memories
-  pthread_rwlock_destroy(&rw_lock);
   
+  delete wait_for_graph;
   delete[] record_wait_queues;
 
   free(records);
   free(thread_logs);
   free(threads);
-  return 0;
+
+  for (uint64_t i = 0; i < R; ++i) {
+    pthread_rwlock_destroy(&rw_lock[i]);
+  }
+  free(rw_lock);
 }

@@ -4,7 +4,7 @@
 
 void directed_graph_test()
 {
-  directed_graph G(10);
+  directed_graph G(11);
 
   G.add_edge(1, 2);
   G.add_edge(2, 3);
@@ -27,9 +27,12 @@ void directed_graph_test()
 
   G.has_cycle_start_from(7);
 
-  G.get_cycle(7);
+  std::vector<uint64_t> && find_result = G.get_cycle(7);
+  G.print_cycle(find_result);
 
-  G.get_cycle(3);
+  find_result = G.get_cycle(3);
+  G.print_cycle(find_result);
 
-  G.get_cycle(1);
+  find_result = G.get_cycle(1);
+  G.print_cycle(find_result);
 }

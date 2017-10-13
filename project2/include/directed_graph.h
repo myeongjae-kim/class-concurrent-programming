@@ -15,7 +15,7 @@
 #include <cstdint>
 #include <cassert>
 
-#define GRAPH_DBG
+// #define GRAPH_DBG
 
 class directed_graph
 {
@@ -32,6 +32,8 @@ public:
   std::vector<uint64_t> get_cycle(uint64_t from);
 
   void show_all_edges();
+  void print_cycle(std::vector<uint64_t> &search_result);
+
 
 private:
   uint64_t number_of_nodes;
@@ -40,7 +42,7 @@ private:
   bool is_node_exist(uint64_t node_number);
 
 
-  bool get_cycle_recur(uint64_t from, std::vector<uint64_t> &stack, std::unordered_set<uint64_t> &visited);
+  bool get_cycle_recur(uint64_t from, uint64_t current_node, std::vector<uint64_t> &stack, std::unordered_set<uint64_t> &visited);
 
 };
 

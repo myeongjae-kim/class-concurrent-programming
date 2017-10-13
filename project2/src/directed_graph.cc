@@ -9,8 +9,7 @@
 directed_graph::directed_graph (uint64_t number_of_nodes) {
   this->number_of_nodes = number_of_nodes;
 
-  // node number is start from one, so I created one more set
-  nodes = new std::unordered_set<uint64_t>[this->number_of_nodes + 1];
+  nodes = new std::unordered_set<uint64_t>[this->number_of_nodes];
 }
 
 directed_graph::~directed_graph () {
@@ -19,13 +18,15 @@ directed_graph::~directed_graph () {
 
 bool directed_graph::is_node_exist(uint64_t node_number) {
   // check whether node_number is exist
-  if(node_number > number_of_nodes) {
-    std::cout << "(directed_graph::check_node_number) Failed. node_number is bigger than number_of_nodes" << std::endl;
+  if(node_number >= number_of_nodes) {
+
+    std::cout << "(directed_graph::check_node_number) Failed. node_number "
+      << node_number
+      << " is same or bigger than number_of_nodes "
+      << number_of_nodes << std::endl;
+
     return false;
   }
-
-  // node zero is not used.
-  assert(node_number != 0);
 
   return true;
 }
@@ -59,7 +60,7 @@ void directed_graph::show_all_edges() {
   std::cout << "** Printing All Edges **" << std::endl;
 
   // iterate all nodes
-  for (uint64_t from = 1; from <= number_of_nodes; ++from) {
+  for (uint64_t from = 0; from < number_of_nodes; ++from) {
 
     // iterate all edges in each node
     for (auto to : nodes[from]) {
@@ -143,8 +144,8 @@ bool directed_graph::has_cycle_start_from(uint64_t from) {
 std::vector<uint64_t> directed_graph::get_cycle(uint64_t from) {
   // initialize data structures.
   
-  // The stack is used to save cycle members.
-  std::vector<uint64_t> stack;
+  // The cycle_member_nodes is used to save cycle members.
+  std::vector<uint64_t> cycle_member_nodes;
 
   // The visited set has nodes that have been visited.
   std::unordered_set<uint64_t> visited;
@@ -152,39 +153,41 @@ std::vector<uint64_t> directed_graph::get_cycle(uint64_t from) {
   // DFS
   for (auto to : nodes[from]) {
     // push destination to stack
-    stack.push_back(to);
 
 #ifdef GRAPH_DBG
-    std::cout << "(get_cycle) start finding cycle." << std::endl;
-    std::cout << "(get_cycle) from " << from <<" to " << to << std::endl;
+    std::cout << "(get_cycle) ** Start finding a cycle that includes " << from << " **" << std::endl;
+    std::cout << "(get_cycle)       from " << from <<" to " << to << std::endl;
 #endif
 
     // Call recursive function
-    if (get_cycle_recur(from, stack, visited)) {
+    if (get_cycle_recur(from, to, cycle_member_nodes, visited)) {
+      cycle_member_nodes.push_back(to);
 
 #ifdef GRAPH_DBG
       std::cout << "(get_cycle) cycle found" << std::endl;
-      std::cout << "(get_cycle) " << stack[0];
+      std::cout << "(get_cycle) " << cycle_member_nodes.back();
 
-      for (uint64_t i = 1; i < stack.size(); ++i) {
-        std::cout << " -> " << stack[i];
+      
+      for (uint64_t i = cycle_member_nodes.size() - 2; i < cycle_member_nodes.size(); --i) {
+        std::cout << " -> " << cycle_member_nodes[i];
       }
       std::cout << std::endl;
 
+      std::cout << "(get_cycle) **  End finding a cycle that includes " << from << "  **" << std::endl;
 #endif
 
-      return stack;
+      return cycle_member_nodes;
     }
 
-    stack.clear();
   }
 
 #ifdef GRAPH_DBG
     std::cout << "(get_cycle) cycle not found" << std::endl;
+    std::cout << "(get_cycle) **  End finding a cycle that includes " << from << "  **" << std::endl;
 #endif
 
 
-  return stack;
+  return cycle_member_nodes;
 }
 
 
@@ -192,11 +195,10 @@ std::vector<uint64_t> directed_graph::get_cycle(uint64_t from) {
 // If cycle is found, it reutrns ture.
 // If not, it returns false.
 bool directed_graph::get_cycle_recur(uint64_t from,
-                                std::vector<uint64_t> &stack,
+                                uint64_t current_node,
+                                std::vector<uint64_t> &cycle_member_nodes,
                                 std::unordered_set<uint64_t> &visited){
   // Base case
-  uint64_t current_node = stack.back();
-
   visited.insert(current_node);
 
   if (nodes[current_node].empty()) {
@@ -211,19 +213,37 @@ bool directed_graph::get_cycle_recur(uint64_t from,
   for (auto to : nodes[current_node]) {
     // do not visit node again
     if (visited.find(to) == visited.end()) {
-      stack.push_back(to);
 
 #ifdef GRAPH_DBG
       std::cout << "(get_cycle_recur) from " << current_node <<" to " << to << std::endl;
 #endif
 
-      if (get_cycle_recur(from, stack, visited)) {
+      if (get_cycle_recur(from, to, cycle_member_nodes, visited)) {
+        cycle_member_nodes.push_back(to);
         return true;
       }
 
-      stack.pop_back();
     }
   }
 
   return false;
 }
+
+
+void directed_graph::print_cycle(std::vector<uint64_t> &search_result) {
+  if (search_result.size() == 0) {
+    std::cout << "(print_cycle) ** No cycle found **" << std::endl;
+    return;
+  }
+
+  std::cout << "(print_cycle) ** Cycle found **" << std::endl;
+  std::cout << "(print_cycle)    "<< search_result[0];
+
+  uint64_t result_size = search_result.size();
+  for (uint64_t i = 1; i < result_size; ++i) {
+    std::cout << " -> " << search_result[i];
+  }
+  std::cout << std::endl;
+  std::cout << "(print_cycle) **     End     **" << std::endl;
+}
+

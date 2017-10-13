@@ -1,4 +1,11 @@
-#pragma once
+/** Metadata
+ * Author               : Kim, Myeong Jae
+ * File Name            : main.h
+ * Due date             : 2017-10-22
+ * Compilation Standard : c++11 */
+
+#ifndef MAIN_H
+#define MAIN_H
 
 #define DBG
 
@@ -19,3 +26,5 @@ typedef struct _wait_q_elem {
   enum read_or_write_t {READ, WRITE};
   read_or_write_t rw;
 } wait_q_elem_t;
+
+#endif

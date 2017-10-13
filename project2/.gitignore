@@ -6,3 +6,4 @@ run
 *.sh
 rn
 .clang_complete
+thread*.txt
