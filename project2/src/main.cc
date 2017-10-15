@@ -10,6 +10,7 @@
 
 #include <cstdint>
 #include <cassert>
+#include <cstdlib>
 
 #include <pthread.h>
 
@@ -80,6 +81,7 @@ int main(const int argc, const char * const argv[])
   std::cout << "max_execution_num: " << E << std::endl;
 #endif
   initialize_global_variables();
+  srand(time(NULL));
 
   for (uint64_t i = 0; i < N; i++) {
     if (pthread_create(&threads[i], 0, transaction, (void*)i) < 0) {

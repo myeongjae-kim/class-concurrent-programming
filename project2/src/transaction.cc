@@ -151,8 +151,22 @@ void* transaction(void* arg) {
           break;
         }
 
-        //go to sleep
-        pthread_cond_wait(&cond_var[tid], &global_mutex);
+
+        // Check queue again before sleeping
+        // that a writer is exist in front of curernt thread.
+        for (auto inner_iter = record_wait_queues[i].begin(); inner_iter != record_wait_queues[i].end(); ++i) {
+          if (inner_iter->tid == tid) {
+            // I am found.
+            // Go to get a lock.
+            break;
+          } else if (inner_iter->current_phase != READ) {
+            //go to sleep
+            pthread_cond_wait(&cond_var[tid], &global_mutex);
+            // waken up! get rw_lock
+            break;
+          }
+        }
+        
 
         // waken up! get rw_lock
         break;
@@ -206,9 +220,7 @@ void* transaction(void* arg) {
 
     // If any reader or writer is exist in front of current thread,
     // current thread cannot get a lock.
-    // It means that a queue size is not 1,
-    // the current thread cannot get a lock.
-    if (record_wait_queues[j].size() != 1) {
+    if (record_wait_queues[j][0].tid != tid) {
       // ahead thread is exist.
       reader_or_writer_exist = true;
 
@@ -245,7 +257,9 @@ void* transaction(void* arg) {
         // newer than us??
 
         std::cout << "(transaction) Impossible case is occurred." << std::endl;
-      } else {
+
+        // is it really not the first of a queue?
+      } else if (record_wait_queues[j][0].tid != tid) {
         // wait ahead thread
         pthread_cond_wait(&cond_var[tid], &global_mutex);
         // waken up! get rw_lock
@@ -306,10 +320,7 @@ void* transaction(void* arg) {
 
     // If any reader or writer is exist in front of current thread,
     // current thread cannot get a lock.
-    // It means that a queue size is not 1,
-    // the current thread cannot get a lock.
-
-    if (record_wait_queues[k].size() != 1) {
+    if (record_wait_queues[k][0].tid != tid) {
       // ahead thread is exist.
       reader_or_writer_exist = true;
 
@@ -345,7 +356,9 @@ void* transaction(void* arg) {
         // newer than us??
 
         std::cout << "(transaction) Impossible case is occurred." << std::endl;
-      } else {
+
+        //check queue again. Is it really not first of the queue?
+      } else if(record_wait_queues[k][0].tid != tid){
         // wait ahead thread
         pthread_cond_wait(&cond_var[tid], &global_mutex);
         // waken up! get rw_lock
@@ -394,8 +407,7 @@ void* transaction(void* arg) {
     log.current_phase = COMMIT;
 
     // TODO: Error check. Remove below code when it works well.
-    if (record_wait_queues[i][0].tid != tid ||
-        record_wait_queues[j][0].tid != tid ||
+    if (record_wait_queues[j][0].tid != tid ||
         record_wait_queues[k][0].tid != tid 
        ) {
       std::cout << "(transaction)ERROR! The top of queues is not current transaction." << std::endl;
@@ -403,21 +415,28 @@ void* transaction(void* arg) {
     }
 
     // Dequeue from all wait queues.
-    record_wait_queues[i].erase(record_wait_queues[i].begin());
+    // record_wait_queues[i].erase(record_wait_queues[i].begin());
+    
+    // TODO:It uses memory location. This is not guaranteed. Use another way.
+    record_wait_queues[i].erase(log.i_queue_location);
+
     record_wait_queues[j].erase(record_wait_queues[j].begin());
     record_wait_queues[k].erase(record_wait_queues[k].begin());
     
     // Remove edges from wait_for graph that pointing this transaction.
     if (record_wait_queues[i].size() != 0) {
       wait_for_graph->remove_edge(record_wait_queues[i][0].tid, tid);
+      pthread_cond_signal(&cond_var[record_wait_queues[i][0].tid]);
     }
     
     if (record_wait_queues[j].size() != 0) {
       wait_for_graph->remove_edge(record_wait_queues[j][0].tid, tid);
+      pthread_cond_signal(&cond_var[record_wait_queues[j][0].tid]);
     }
 
     if (record_wait_queues[k].size() != 0) {
       wait_for_graph->remove_edge(record_wait_queues[k][0].tid, tid);
+      pthread_cond_signal(&cond_var[record_wait_queues[k][0].tid]);
     }
 
     // Release all rw_lock
@@ -496,6 +515,9 @@ void rollback(log_t &log) {
   // rollback case
   switch (log.current_phase) {
     case COMMIT:
+#ifdef TRX_DBG
+      std::cout << "(rollback) Log is COMMIT phase." << std::endl;
+#endif
       // TODO: just recovering values.
       records[log.k] += log.value_of_i;
       records[log.j] -= (log.value_of_i + 1);
