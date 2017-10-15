@@ -50,7 +50,7 @@ void* transaction(void* arg) {
 #endif
 
   // make file.
-  std::string file_name = "thread" + std::to_string(tid + 1) + ".txt";
+  std::string file_name = "thread" + std::to_string(tid) + ".txt";
     
   // TODO: how about using a memory buffer to collect results?
   std::ofstream log_file(file_name);
@@ -149,6 +149,7 @@ void* transaction(void* arg) {
           // TODO: Is this possible case? What we waited for is
           // newer than us??
           std::cout << "(transaction) Impossible case is occurred." << std::endl;
+          assert(false);
           break;
         }
 
@@ -258,6 +259,7 @@ void* transaction(void* arg) {
         // newer than us??
 
         std::cout << "(transaction) Impossible case is occurred." << std::endl;
+        assert(false);
 
         // is it really not the first of a queue?
       } else if (record_wait_queues[j][0].tid != tid) {
@@ -357,6 +359,7 @@ void* transaction(void* arg) {
         // newer than us??
 
         std::cout << "(transaction) Impossible case is occurred." << std::endl;
+        assert(false);
 
         //check queue again. Is it really not first of the queue?
       } else if(record_wait_queues[k][0].tid != tid){

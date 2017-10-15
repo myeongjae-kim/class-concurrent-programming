@@ -84,7 +84,7 @@ int main(const int argc, const char * const argv[])
   srand(time(NULL));
 
   for (uint64_t i = 0; i < N; i++) {
-    if (pthread_create(&threads[i], 0, transaction, (void*)i) < 0) {
+    if (pthread_create(&threads[i], 0, transaction, (void*)(i + 1) ) < 0) {
       std::cout << "(main) thread creation has been failed." << std::endl;
       deallocate_global_variables();
       return 1;
