@@ -6,13 +6,16 @@
 
 #include "directed_graph.h"
 
+// constructor
 directed_graph::directed_graph (uint64_t number_of_nodes) {
   this->number_of_nodes = number_of_nodes;
 
+  // create nodes
   nodes = new std::unordered_set<uint64_t>[this->number_of_nodes];
 }
 
 directed_graph::~directed_graph () {
+  // destroy nodes
   delete[] nodes;
 }
 

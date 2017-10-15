@@ -1,7 +1,7 @@
 # Compiler and Compile options.
 CC = g++
-# CXXFLAGS = -g -Wall -Wextra -Wpedantic -std=c++11 -ltcmalloc_minimal
-CXXFLAGS = -Wall -Wextra -Wpedantic -std=c++11 -ltcmalloc_minimal -O3
+CXXFLAGS = -g -Wall -Wextra -Wpedantic -std=c++11 -ltcmalloc_minimal
+# CXXFLAGS = -Wall -Wextra -Wpedantic -std=c++11 -ltcmalloc_minimal -O3
 
 # Macros specifying path for compile.
 
@@ -24,3 +24,6 @@ $(TARGET): $(OBJS)
 # Delete binary & object files.
 clean:
 	rm $(BIN)$(TARGET) $(OBJS) thread*.txt
+
+tc:
+	rm thread*.txt

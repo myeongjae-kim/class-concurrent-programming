@@ -12,6 +12,7 @@
 #include <cassert>
 
 #include <pthread.h>
+
 #include "main.h"
 #include "transaction.h"
 #include "directed_graph.h"
@@ -25,17 +26,24 @@ uint64_t E; // maximum number of executions
 pthread_t *threads;
 log_t* thread_logs;
 int64_t *records;
+uint64_t *threads_timestamp;
+bool *threads_abort_flag;
 
-std::queue<wait_q_elem_t> *record_wait_queues;
+std::vector<wait_q_elem_t> *record_wait_queues;
 
 // graph for detecting deadlock
 directed_graph *wait_for_graph;
 
-uint64_t timestamp = 0; // for deadlock situation. transaction killing order
-uint64_t global_execution_order = 0;
+uint64_t global_timestamp = 0; // for deadlock situation. transaction killing order
+uint64_t global_execution_order = 0; // this value is used as a commid_id.
 
 pthread_mutex_t global_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+// each record gets a conditional variable.
 pthread_rwlock_t *rw_lock;
+
+// each thread gets a conditional variable.
+pthread_cond_t *cond_var;
 
 //TODO: commit and rollback implementation. how??
 
@@ -87,6 +95,7 @@ int main(const int argc, const char * const argv[])
   }
 
 
+
   deallocate_global_variables();
   return 0;
 }
@@ -96,11 +105,16 @@ void initialize_global_variables() {
   
   rw_lock = (pthread_rwlock_t*)malloc(R * sizeof(*rw_lock));
   assert(rw_lock != nullptr);
+
   for (uint64_t i = 0; i < R; ++i) {
-    if (pthread_rwlock_init(&rw_lock[i], NULL) != 0) {
-      std::cout << "(main) rwlock_init is failed." << std::endl;
-      exit(EXIT_FAILURE);
-    }
+    rw_lock[i] = PTHREAD_RWLOCK_INITIALIZER;
+  }
+
+  cond_var = (pthread_cond_t*)malloc(N * sizeof(*cond_var));
+  assert(cond_var != nullptr);
+
+  for (uint64_t i = 0; i < N; ++i) {
+    cond_var[i] = PTHREAD_COND_INITIALIZER;
   }
 
   // memory allocation
@@ -112,12 +126,18 @@ void initialize_global_variables() {
   records = (int64_t*)malloc(R * sizeof(*records));
   assert(records != nullptr);
 
+  threads_timestamp = (uint64_t*)malloc(N * sizeof(*threads_timestamp));
+  assert(threads_timestamp != nullptr);
+
+  threads_abort_flag = (bool*)calloc(N, sizeof(*threads_abort_flag));
+  assert(threads_abort_flag != nullptr);
+
   for (uint64_t i = 0; i < R; ++i) {
     records[i] = 100;
   }
 
 
-  record_wait_queues = new std::queue<wait_q_elem_t>[R];
+  record_wait_queues = new std::vector<wait_q_elem_t>[R];
   assert(record_wait_queues != nullptr);
 
   wait_for_graph = new directed_graph(N);
@@ -129,12 +149,18 @@ void deallocate_global_variables() {
   delete wait_for_graph;
   delete[] record_wait_queues;
 
+  free(threads_abort_flag);
+  free(threads_timestamp);
   free(records);
   free(thread_logs);
   free(threads);
 
+  for (uint64_t i = 0; i < N; ++i) {
+    pthread_cond_destroy(&cond_var[i]);
+  }
   for (uint64_t i = 0; i < R; ++i) {
     pthread_rwlock_destroy(&rw_lock[i]);
   }
+  free(cond_var);
   free(rw_lock);
 }
