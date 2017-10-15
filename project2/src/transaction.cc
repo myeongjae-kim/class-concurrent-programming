@@ -122,8 +122,8 @@ void* transaction(void* arg) {
         wait_for_graph->add_edge(tid, ahead_writer_tid);
 
         // deadlock checking
-        auto &&deadlock_exist_and_newest_tid = is_deadlock_exist(tid);
-        if (deadlock_exist_and_newest_tid.first) {
+        std::pair<bool, uint64_t> deadlock_exist_and_newest_tid;
+        while((deadlock_exist_and_newest_tid = is_deadlock_exist(tid)).first){
           // deadlock exist!
 
           // When I am the newest one
@@ -138,7 +138,14 @@ void* transaction(void* arg) {
             abort_target_transaction(deadlock_exist_and_newest_tid.second);
           }
         }
-        
+
+        if (threads_abort_flag[tid]) {
+          // abort current transaction.
+          break;
+        }
+
+
+
         // deadlock is not exist.
 
         // If an aborted transaction is the one we waited for,
@@ -148,8 +155,7 @@ void* transaction(void* arg) {
 
           // TODO: Is this possible case? What we waited for is
           // newer than us??
-          std::cout << "(transaction) Impossible case is occurred." << std::endl;
-          assert(false);
+          std::cout << "[tid:" << tid << "] " << "(transaction) Possible case." << std::endl;
           break;
         }
 
@@ -168,7 +174,7 @@ void* transaction(void* arg) {
             break;
           }
         }
-        
+
 
         // waken up! get rw_lock
         break;
@@ -184,13 +190,14 @@ void* transaction(void* arg) {
         wait_for_graph->remove_edge(tid, ahead_writer_tid);
         writer_exist = false;
       }
-      
+
       rollback(log);
       // Rollback is end.
+      threads_abort_flag[tid] = false;
       pthread_mutex_unlock(&global_mutex);
       continue;
     }
-    
+
     // If ahead writer is not exist, get read lock.
     pthread_rwlock_rdlock(&rw_lock[i]);
 
@@ -210,7 +217,7 @@ void* transaction(void* arg) {
     // For write j
     pthread_mutex_lock(&global_mutex);
     log.current_phase = FIRST_WRITE;
-    
+
     // Insert to wait queue
     record_wait_queues[j].push_back( wait_q_elem_t({tid, FIRST_WRITE}) );
     // log.j_queue_location = record_wait_queues[j].end() - 1;
@@ -231,8 +238,8 @@ void* transaction(void* arg) {
 
 
       // deadlock checking
-      auto &&deadlock_exist_and_newest_tid = is_deadlock_exist(tid);
-      if (deadlock_exist_and_newest_tid.first) {
+      std::pair<bool, uint64_t> deadlock_exist_and_newest_tid;
+      while((deadlock_exist_and_newest_tid = is_deadlock_exist(tid)).first){
         // deadlock exist!
 
         // When I am the newest one
@@ -248,18 +255,24 @@ void* transaction(void* arg) {
         }
       }
 
-      // deadlock is not exist.
+
+
+      // deadlock is not exist except when I am the aborting thread
+
+      if (threads_abort_flag[tid]) {
+        // abort current transaction.
+        // go to be aborted
+      }
 
       // If an aborted transaction is the one we waited for,
       // Go to get a read lock
-      if (deadlock_exist_and_newest_tid.first &&
+      else if (deadlock_exist_and_newest_tid.first &&
           deadlock_exist_and_newest_tid.second == ahead_rw_tid) {
         // Do not sleep. Go to get a lock.
         // TODO: Is this possible case? What we waited for is
         // newer than us??
 
-        std::cout << "(transaction) Impossible case is occurred." << std::endl;
-        assert(false);
+        std::cout << "[tid:" << tid << "] "  << "(transaction) Possible case." << std::endl;
 
         // is it really not the first of a queue?
       } else if (record_wait_queues[j][0].tid != tid) {
@@ -274,7 +287,7 @@ void* transaction(void* arg) {
     if (threads_abort_flag[tid]) {
       // Start of rollbacking process
       // Remove graph edge.
-      
+
       // remove element from wait_for graph
       if (reader_or_writer_exist) {
         wait_for_graph->remove_edge(tid, ahead_rw_tid);
@@ -285,6 +298,7 @@ void* transaction(void* arg) {
 
       rollback(log);
       // Rollbacking end
+      threads_abort_flag[tid] = false;
       pthread_mutex_unlock(&global_mutex);
       continue;
     }
@@ -331,8 +345,9 @@ void* transaction(void* arg) {
       wait_for_graph->add_edge(tid, ahead_rw_tid);
 
       // deadlock checking
-      auto &&deadlock_exist_and_newest_tid = is_deadlock_exist(tid);
-      if (deadlock_exist_and_newest_tid.first) {
+      std::pair<bool, uint64_t> deadlock_exist_and_newest_tid;
+      while((deadlock_exist_and_newest_tid = is_deadlock_exist(tid)).first){
+
         // deadlock exist!
 
         // When I am the newest one
@@ -348,18 +363,22 @@ void* transaction(void* arg) {
         }
       }
 
-      // deadlock is not exist.
+      // deadlock is not exist except when I am the aborting thread
+
+      if (threads_abort_flag[tid]) {
+        // abort current transaction.
+        // go to be aborted
+      }
 
       // If an aborted transaction is the one we waited for,
       // Go to get a read lock
-      if (deadlock_exist_and_newest_tid.first &&
+      else if (deadlock_exist_and_newest_tid.first &&
           deadlock_exist_and_newest_tid.second == ahead_rw_tid) {
         // Do not sleep. Go to get a lock.
         // TODO: Is this possible case? What we waited for is
         // newer than us??
 
-        std::cout << "(transaction) Impossible case is occurred." << std::endl;
-        assert(false);
+        std::cout << "[tid:" << tid << "] "  << "(transaction) Possible case." << std::endl;
 
         //check queue again. Is it really not first of the queue?
       } else if(record_wait_queues[k][0].tid != tid){
@@ -373,7 +392,7 @@ void* transaction(void* arg) {
     // and current transaction is the newest one.
     if (threads_abort_flag[tid]) {
       // Start of rollbacking process
-      
+
       // remove element from wait_for graph
       if (reader_or_writer_exist) {
         wait_for_graph->remove_edge(tid, ahead_rw_tid);
@@ -383,6 +402,7 @@ void* transaction(void* arg) {
 
       rollback(log);
       // Rollbacking is end.
+      threads_abort_flag[tid] = false;
       pthread_mutex_unlock(&global_mutex);
       continue;
     }
@@ -414,13 +434,13 @@ void* transaction(void* arg) {
     if (record_wait_queues[j][0].tid != tid ||
         record_wait_queues[k][0].tid != tid 
        ) {
-      std::cout << "(transaction)ERROR! The top of queues is not current transaction." << std::endl;
+      std::cout << "[tid:" << tid << "] "  << "(transaction)ERROR! The top of queues is not current transaction." << std::endl;
       assert(false);
     }
 
     // Dequeue from all wait queues.
     // record_wait_queues[i].erase(record_wait_queues[i].begin());
-    
+
     // TODO:It uses memory location. This is not guaranteed. Use another way.
     bool read_queue_erased = false;
     for (auto iter = record_wait_queues[i].begin(); iter != record_wait_queues[i].end(); ++iter) {
@@ -436,13 +456,13 @@ void* transaction(void* arg) {
     record_wait_queues[j].erase(record_wait_queues[j].begin());
     assert(record_wait_queues[k].begin()->tid == tid);
     record_wait_queues[k].erase(record_wait_queues[k].begin());
-    
+
     // Remove edges from wait_for graph that pointing this transaction.
     if (record_wait_queues[i].size() != 0) {
       wait_for_graph->remove_edge(record_wait_queues[i][0].tid, tid);
       pthread_cond_signal(&cond_var[record_wait_queues[i][0].tid]);
     }
-    
+
     if (record_wait_queues[j].size() != 0) {
       wait_for_graph->remove_edge(record_wait_queues[j][0].tid, tid);
       pthread_cond_signal(&cond_var[record_wait_queues[j][0].tid]);
@@ -474,9 +494,19 @@ void* transaction(void* arg) {
     log_file << log.commit_id << " " << log.i << " " << log.j << " " << log.k << " "
       << log.value_of_i << " " << log.value_of_j << " " << log.value_of_k << std::endl;
 
+
+    if (commit_id % 10000 == 0) {
+      std::cout << "[tid:" << tid << "] "  << "(transaction)current commit id: " << commit_id <<", E: " << E << std::endl;
+    }
+
     pthread_mutex_unlock(&global_mutex);
 
   }
+
+  std::cout << "[tid:" << tid << "] "  << "(transaction) The end of transaction. It will be terminated." << std::endl;
+  std::cout << "[tid:" << tid << "] "  << "(transaction) global_execution_order: " << global_execution_order << std::endl;
+  std::cout << "[tid:" << tid << "] "  << "(transaction) threads_abort_flag[tid]: " << threads_abort_flag[tid]<< std::endl;
+
 
   log_file.close();
   return nullptr;
@@ -531,7 +561,7 @@ void rollback(log_t &log) {
   switch (log.current_phase) {
     case COMMIT:
 #ifdef TRX_DBG
-      std::cout << "(rollback) Log is COMMIT phase." << std::endl;
+      std::cout << "[tid:" << log.tid << "] "  << "(rollback) Log is COMMIT phase." << std::endl;
 #endif
       // TODO: just recovering values.
       records[log.k] += log.value_of_i;
@@ -542,19 +572,35 @@ void rollback(log_t &log) {
     case SECOND_WRITE:
       // Every queue and graph edge has been cleaned.
       // What we need to do is just recovering records.
-      
+
 
 #ifdef TRX_DBG
-      std::cout << "(rollback) Log is SECOND_WRITE phase." << std::endl;
+      std::cout << "[tid:" << log.tid << "] "  << "(rollback) Log is SECOND_WRITE phase." << std::endl;
 #endif
       // TODO: clear queue. Unlock acquired locks.
       // Here is before acquring first write lock.
+
+
+      // clear queue -> remove edges from wait_for graph -> wake up threads -> unlock
 
 
       // erase element from i
       i_deleted = false;
       for (auto iter = record_wait_queues[log.i].begin(); iter != record_wait_queues[log.i].end(); ++iter) {
         if (iter->tid == log.tid) {
+
+          // if next member is exist and it is wrter,
+          // remove edges and wake it up.
+          auto next = iter + 1;
+          if (next != record_wait_queues[log.i].end()
+              && next->current_phase != READ) {
+            wait_for_graph->remove_edge(next->tid, log.tid);
+            pthread_cond_signal(&cond_var[next->tid]);
+          }
+
+
+
+
           i_deleted = true;
           record_wait_queues[log.i].erase(iter);
           break;
@@ -567,6 +613,17 @@ void rollback(log_t &log) {
       j_deleted = false;
       for (auto iter = record_wait_queues[log.j].begin(); iter != record_wait_queues[log.j].end(); ++iter) {
         if (iter->tid == log.tid) {
+
+          // if next member is exist,
+          // remove edges and wake it up.
+
+          auto next = iter + 1;
+          if (next != record_wait_queues[log.j].end()) {
+            wait_for_graph->remove_edge(next->tid, log.tid);
+            pthread_cond_signal(&cond_var[next->tid]);
+          }
+
+
           j_deleted = true;
           record_wait_queues[log.j].erase(iter);
           break;
@@ -578,6 +635,17 @@ void rollback(log_t &log) {
       k_deleted = false;
       for (auto iter = record_wait_queues[log.k].begin(); iter != record_wait_queues[log.k].end(); ++iter) {
         if (iter->tid == log.tid) {
+
+          // if next member is exist,
+          // remove edges and wake it up.
+
+          auto next = iter + 1;
+          if (next != record_wait_queues[log.k].end()) {
+            wait_for_graph->remove_edge(next->tid, log.tid);
+            pthread_cond_signal(&cond_var[next->tid]);
+          }
+
+
           k_deleted = true;
           record_wait_queues[log.k].erase(iter);
           break;
@@ -593,7 +661,7 @@ void rollback(log_t &log) {
 
     case FIRST_WRITE:
 #ifdef TRX_DBG
-      std::cout << "(rollback) Log is FIRST_WRITE phase." << std::endl;
+      std::cout << "[tid:" << log.tid << "] "  << "(rollback) Log is FIRST_WRITE phase." << std::endl;
 #endif
       // Recover value of j
       // TODO: clear queue. Unlock acquired locks.
@@ -603,6 +671,18 @@ void rollback(log_t &log) {
       i_deleted = false;
       for (auto iter = record_wait_queues[log.i].begin(); iter != record_wait_queues[log.i].end(); ++iter) {
         if (iter->tid == log.tid) {
+
+          // if next member is exist and it is wrter,
+          // remove edges and wake it up.
+          auto next = iter + 1;
+          if (next != record_wait_queues[log.i].end()
+              && next->current_phase != READ) {
+            wait_for_graph->remove_edge(next->tid, log.tid);
+            pthread_cond_signal(&cond_var[next->tid]);
+          }
+
+
+
           i_deleted = true;
           record_wait_queues[log.i].erase(iter);
           break;
@@ -615,6 +695,16 @@ void rollback(log_t &log) {
       j_deleted = false;
       for (auto iter = record_wait_queues[log.j].begin(); iter != record_wait_queues[log.j].end(); ++iter) {
         if (iter->tid == log.tid) {
+
+
+          auto next = iter + 1;
+          if (next != record_wait_queues[log.j].end()) {
+            wait_for_graph->remove_edge(next->tid, log.tid);
+            pthread_cond_signal(&cond_var[next->tid]);
+          }
+
+
+
           j_deleted = true;
           record_wait_queues[log.j].erase(iter);
           break;
@@ -635,12 +725,24 @@ void rollback(log_t &log) {
       // TODO: clear queue. Unlock acquired locks.
       // Here is before acquring read lock.
 #ifdef TRX_DBG
-      std::cout << "(rollback) Log is READ phase." << std::endl;
+      std::cout << "[tid:" << log.tid << "] "  << "(rollback) Log is READ phase." << std::endl;
 #endif
       // erase element from i
       i_deleted = false;
       for (auto iter = record_wait_queues[log.i].begin(); iter != record_wait_queues[log.i].end(); ++iter) {
         if (iter->tid == log.tid) {
+
+          // if next member is exist and it is wrter,
+          // remove edges and wake it up.
+          auto next = iter + 1;
+          if (next != record_wait_queues[log.i].end()
+              && next->current_phase != READ) {
+            wait_for_graph->remove_edge(next->tid, log.tid);
+            pthread_cond_signal(&cond_var[next->tid]);
+          }
+
+
+
           i_deleted = true;
           record_wait_queues[log.i].erase(iter);
           break;
@@ -652,11 +754,11 @@ void rollback(log_t &log) {
 
       break;
     case INVALID:
-      std::cout << "(rollback) ERROR! Invalid log is inserted." << std::endl;
+      std::cout << "[tid:" << log.tid << "] "  << "(rollback) ERROR! Invalid log is inserted." << std::endl;
       assert(false);
       break;
     default:
-      std::cout << "(rollback) ERROR! Deafult case is not exist." << std::endl;
+      std::cout << "[tid:" << log.tid << "] "  << "(rollback) ERROR! Deafult case is not exist." << std::endl;
       assert(false);
   }
 }
@@ -677,6 +779,7 @@ void abort_target_transaction(uint64_t target_tid) {
 
   // wait rollbacking
   while (threads_abort_flag[target_tid] == true) {
+    pthread_cond_signal(&cond_var[target_tid]);
     pthread_yield();
   }
 

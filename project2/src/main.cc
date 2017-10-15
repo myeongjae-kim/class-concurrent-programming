@@ -112,26 +112,26 @@ void initialize_global_variables() {
     rw_lock[i] = PTHREAD_RWLOCK_INITIALIZER;
   }
 
-  cond_var = (pthread_cond_t*)malloc(N * sizeof(*cond_var));
+  cond_var = (pthread_cond_t*)malloc((N+1) * sizeof(*cond_var));
   assert(cond_var != nullptr);
 
-  for (uint64_t i = 0; i < N; ++i) {
+  for (uint64_t i = 0; i < (N+1); ++i) {
     cond_var[i] = PTHREAD_COND_INITIALIZER;
   }
 
   // memory allocation
   threads = (pthread_t*)malloc(N * sizeof(*threads));
   assert(threads != nullptr);
-  thread_logs = (log_t*)malloc(N * sizeof(*thread_logs));
+  thread_logs = (log_t*)malloc((N+1) * sizeof(*thread_logs));
   assert(thread_logs != nullptr);
 
   records = (int64_t*)malloc(R * sizeof(*records));
   assert(records != nullptr);
 
-  threads_timestamp = (uint64_t*)malloc(N * sizeof(*threads_timestamp));
+  threads_timestamp = (uint64_t*)malloc((N+1) * sizeof(*threads_timestamp));
   assert(threads_timestamp != nullptr);
 
-  threads_abort_flag = (bool*)calloc(N, sizeof(*threads_abort_flag));
+  threads_abort_flag = (bool*)calloc((N+1), sizeof(*threads_abort_flag));
   assert(threads_abort_flag != nullptr);
 
   for (uint64_t i = 0; i < R; ++i) {
@@ -142,7 +142,7 @@ void initialize_global_variables() {
   record_wait_queues = new std::vector<wait_q_elem_t>[R];
   assert(record_wait_queues != nullptr);
 
-  wait_for_graph = new directed_graph(N);
+  wait_for_graph = new directed_graph(N + 1);
 }
 
 void deallocate_global_variables() {
@@ -157,7 +157,7 @@ void deallocate_global_variables() {
   free(thread_logs);
   free(threads);
 
-  for (uint64_t i = 0; i < N; ++i) {
+  for (uint64_t i = 0; i < N+1; ++i) {
     pthread_cond_destroy(&cond_var[i]);
   }
   for (uint64_t i = 0; i < R; ++i) {

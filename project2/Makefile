@@ -27,3 +27,4 @@ clean:
 
 tc:
 	rm thread*.txt
+	rm marking/thread*.txt
