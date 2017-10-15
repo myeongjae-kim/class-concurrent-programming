@@ -67,6 +67,7 @@ void* transaction(void* arg) {
     log_t log;
     // log initializing.
     memset(&log, 0, sizeof(log));
+    log.tid = tid;
 
     // flag initializing.
     threads_abort_flag[tid] = false;
@@ -101,7 +102,7 @@ void* transaction(void* arg) {
 
     // Insert to queue
     record_wait_queues[i].push_back( wait_q_elem_t({tid, READ}) );
-    log.i_queue_location = record_wait_queues[i].end() - 1;
+    // log.i_queue_location = record_wait_queues[i].end() - 1;
 
     // Check whether writer lock exist in front of this thread.
     // Iterated wait queue from back.
@@ -211,7 +212,7 @@ void* transaction(void* arg) {
     
     // Insert to wait queue
     record_wait_queues[j].push_back( wait_q_elem_t({tid, FIRST_WRITE}) );
-    log.j_queue_location = record_wait_queues[j].end() - 1;
+    // log.j_queue_location = record_wait_queues[j].end() - 1;
 
     // Check whether reader or writer exist in front of this thread.
     // Iterated wait queue from back.
@@ -309,7 +310,7 @@ void* transaction(void* arg) {
 
     // Insert to wait queue
     record_wait_queues[k].push_back( wait_q_elem_t({tid, SECOND_WRITE}) );
-    log.k_queue_location = record_wait_queues[k].end() - 1;
+    // log.k_queue_location = record_wait_queues[k].end() - 1;
 
     // Check whether reader or writer exist in front of this thread.
     // Iterated wait queue from back.
@@ -418,9 +419,19 @@ void* transaction(void* arg) {
     // record_wait_queues[i].erase(record_wait_queues[i].begin());
     
     // TODO:It uses memory location. This is not guaranteed. Use another way.
-    record_wait_queues[i].erase(log.i_queue_location);
+    bool read_queue_erased = false;
+    for (auto iter = record_wait_queues[i].begin(); iter != record_wait_queues[i].end(); ++iter) {
+      if (iter->tid == tid) {
+        read_queue_erased = true;
+        record_wait_queues[i].erase(iter);
+        break;
+      }
+    }
+    assert(read_queue_erased == true);
 
+    assert(record_wait_queues[j].begin()->tid == tid);
     record_wait_queues[j].erase(record_wait_queues[j].begin());
+    assert(record_wait_queues[k].begin()->tid == tid);
     record_wait_queues[k].erase(record_wait_queues[k].begin());
     
     // Remove edges from wait_for graph that pointing this transaction.
@@ -510,6 +521,7 @@ std::pair<bool, uint64_t> is_deadlock_exist(uint64_t from) {
 void rollback(log_t &log) {
   // Edges of wait_for graph is already removed.
 
+  bool i_deleted, j_deleted, k_deleted;
 
 
   // rollback case
@@ -534,9 +546,42 @@ void rollback(log_t &log) {
 #endif
       // TODO: clear queue. Unlock acquired locks.
       // Here is before acquring first write lock.
-      record_wait_queues[log.i].erase(log.i_queue_location);
-      record_wait_queues[log.j].erase(log.j_queue_location);
-      record_wait_queues[log.k].erase(log.k_queue_location);
+
+
+      // erase element from i
+      i_deleted = false;
+      for (auto iter = record_wait_queues[log.i].begin(); iter != record_wait_queues[log.i].end(); ++iter) {
+        if (iter->tid == log.tid) {
+          i_deleted = true;
+          record_wait_queues[log.i].erase(iter);
+          break;
+        }
+      }
+      assert(i_deleted == true);
+
+
+      // erase element from j
+      j_deleted = false;
+      for (auto iter = record_wait_queues[log.j].begin(); iter != record_wait_queues[log.j].end(); ++iter) {
+        if (iter->tid == log.tid) {
+          j_deleted = true;
+          record_wait_queues[log.j].erase(iter);
+          break;
+        }
+      }
+      assert(j_deleted == true);
+
+      // erase element from k
+      k_deleted = false;
+      for (auto iter = record_wait_queues[log.k].begin(); iter != record_wait_queues[log.k].end(); ++iter) {
+        if (iter->tid == log.tid) {
+          k_deleted = true;
+          record_wait_queues[log.k].erase(iter);
+          break;
+        }
+      }
+      assert(k_deleted == true);
+
       pthread_rwlock_unlock(&rw_lock[log.i]);
       pthread_rwlock_unlock(&rw_lock[log.j]);
 
@@ -551,8 +596,31 @@ void rollback(log_t &log) {
       // TODO: clear queue. Unlock acquired locks.
       // Here is before acquring first write lock.
 
-      record_wait_queues[log.i].erase(log.i_queue_location);
-      record_wait_queues[log.j].erase(log.j_queue_location);
+      // erase element from i
+      i_deleted = false;
+      for (auto iter = record_wait_queues[log.i].begin(); iter != record_wait_queues[log.i].end(); ++iter) {
+        if (iter->tid == log.tid) {
+          i_deleted = true;
+          record_wait_queues[log.i].erase(iter);
+          break;
+        }
+      }
+      assert(i_deleted == true);
+
+
+      // erase element from j
+      j_deleted = false;
+      for (auto iter = record_wait_queues[log.j].begin(); iter != record_wait_queues[log.j].end(); ++iter) {
+        if (iter->tid == log.tid) {
+          j_deleted = true;
+          record_wait_queues[log.j].erase(iter);
+          break;
+        }
+      }
+      assert(j_deleted == true);
+
+
+
       pthread_rwlock_unlock(&rw_lock[log.i]);
 
 
@@ -566,8 +634,16 @@ void rollback(log_t &log) {
 #ifdef TRX_DBG
       std::cout << "(rollback) Log is READ phase." << std::endl;
 #endif
-      record_wait_queues[log.i].erase(log.i_queue_location);
-
+      // erase element from i
+      i_deleted = false;
+      for (auto iter = record_wait_queues[log.i].begin(); iter != record_wait_queues[log.i].end(); ++iter) {
+        if (iter->tid == log.tid) {
+          i_deleted = true;
+          record_wait_queues[log.i].erase(iter);
+          break;
+        }
+      }
+      assert(i_deleted == true);
 
       // Remove from queue.
 
