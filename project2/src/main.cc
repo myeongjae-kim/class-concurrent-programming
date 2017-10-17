@@ -75,7 +75,7 @@ int main(const int argc, const char * const argv[])
   }
 
   // setting arguments
-  N = strtol(argv[1], NULL, 0) + 1; // + 1 for not using zero.
+  N = strtol(argv[1], NULL, 0); 
   R = strtol(argv[2], NULL, 0);
   E = strtol(argv[3], NULL, 0);
 
@@ -90,9 +90,11 @@ int main(const int argc, const char * const argv[])
   std::cout << "record: " << R << std::endl;
   std::cout << "max_execution_num: " << E << std::endl;
 #endif
+
+  N++;// + 1 for not using zero.
+
   initialize_global_variables();
   srand(time(NULL));
-
   // tid starts from one.
   for (uint64_t i = 1; i < N; i++) {
     if (pthread_create(&threads[i], 0, transaction, (void*)(i) ) < 0) {
@@ -151,7 +153,7 @@ void initialize_global_variables() {
   record_wait_queues = new std::vector<wait_q_elem_t>[R];
   assert(record_wait_queues != nullptr);
 
-  wait_for_graph = new directed_graph(N + 1);
+  wait_for_graph = new directed_graph(N);
 }
 
 void deallocate_global_variables() {
