@@ -26,9 +26,6 @@ public:
   bool add_edge(uint64_t from, uint64_t to);
   bool remove_edge(uint64_t from, uint64_t to);
 
-  bool has_cycle_start_from(uint64_t node_number);
-
-  
   std::vector<uint64_t> get_cycle(uint64_t from);
 
   void show_all_edges();

@@ -24,12 +24,24 @@ uint64_t N; // number of threads
 uint64_t R; // number of records
 uint64_t E; // maximum number of executions
 
-pthread_t *threads;
-log_t* thread_logs;
-int64_t *records;
-uint64_t *threads_timestamp;
-bool *threads_abort_flag;
+/* Below variables will be an array of N elements. */
+// We do not use thread whose number is zero.
+// If thread ID is zero, it is an invalid thread.
+pthread_t *threads; // N elements
 
+// each thread gets a conditional variable.
+pthread_cond_t *cond_var; // N elements
+
+// Which transaction will be aborted is decided by this array.
+uint64_t *threads_timestamp;  // N elements
+
+// A transaction will execute the rollback process
+// if a value of below array is Zero.
+bool *threads_abort_flag; // N elements
+
+
+/* Below variables will be an array of R elements. */
+int64_t *records;
 std::vector<wait_q_elem_t> *record_wait_queues;
 
 // graph for detecting deadlock
@@ -43,8 +55,6 @@ pthread_mutex_t global_mutex = PTHREAD_MUTEX_INITIALIZER;
 // each record gets a conditional variable.
 pthread_rwlock_t *rw_lock;
 
-// each thread gets a conditional variable.
-pthread_cond_t *cond_var;
 
 //TODO: commit and rollback implementation. how??
 
@@ -65,7 +75,7 @@ int main(const int argc, const char * const argv[])
   }
 
   // setting arguments
-  N = strtol(argv[1], NULL, 0);
+  N = strtol(argv[1], NULL, 0) + 1; // + 1 for not using zero.
   R = strtol(argv[2], NULL, 0);
   E = strtol(argv[3], NULL, 0);
 
@@ -83,8 +93,9 @@ int main(const int argc, const char * const argv[])
   initialize_global_variables();
   srand(time(NULL));
 
-  for (uint64_t i = 0; i < N; i++) {
-    if (pthread_create(&threads[i], 0, transaction, (void*)(i + 1) ) < 0) {
+  // tid starts from one.
+  for (uint64_t i = 1; i < N; i++) {
+    if (pthread_create(&threads[i], 0, transaction, (void*)(i) ) < 0) {
       std::cout << "(main) thread creation has been failed." << std::endl;
       deallocate_global_variables();
       return 1;
@@ -92,7 +103,7 @@ int main(const int argc, const char * const argv[])
   }
 
 
-  for (uint64_t i = 0; i < N; i++) {
+  for (uint64_t i = 1; i < N; i++) {
     pthread_join(threads[i], NULL);
   }
 
@@ -112,26 +123,24 @@ void initialize_global_variables() {
     rw_lock[i] = PTHREAD_RWLOCK_INITIALIZER;
   }
 
-  cond_var = (pthread_cond_t*)malloc((N+1) * sizeof(*cond_var));
+  cond_var = (pthread_cond_t*)malloc((N) * sizeof(*cond_var));
   assert(cond_var != nullptr);
 
-  for (uint64_t i = 0; i < (N+1); ++i) {
+  for (uint64_t i = 0; i < (N); ++i) {
     cond_var[i] = PTHREAD_COND_INITIALIZER;
   }
 
   // memory allocation
   threads = (pthread_t*)malloc(N * sizeof(*threads));
   assert(threads != nullptr);
-  thread_logs = (log_t*)malloc((N+1) * sizeof(*thread_logs));
-  assert(thread_logs != nullptr);
 
   records = (int64_t*)malloc(R * sizeof(*records));
   assert(records != nullptr);
 
-  threads_timestamp = (uint64_t*)malloc((N+1) * sizeof(*threads_timestamp));
+  threads_timestamp = (uint64_t*)malloc((N) * sizeof(*threads_timestamp));
   assert(threads_timestamp != nullptr);
 
-  threads_abort_flag = (bool*)calloc((N+1), sizeof(*threads_abort_flag));
+  threads_abort_flag = (bool*)calloc((N), sizeof(*threads_abort_flag));
   assert(threads_abort_flag != nullptr);
 
   for (uint64_t i = 0; i < R; ++i) {
@@ -154,10 +163,9 @@ void deallocate_global_variables() {
   free(threads_abort_flag);
   free(threads_timestamp);
   free(records);
-  free(thread_logs);
   free(threads);
 
-  for (uint64_t i = 0; i < N+1; ++i) {
+  for (uint64_t i = 0; i < N; ++i) {
     pthread_cond_destroy(&cond_var[i]);
   }
   for (uint64_t i = 0; i < R; ++i) {
