@@ -11,10 +11,12 @@
 #include <cstdint>
 #include <cassert>
 #include <cstdlib>
+#include <cstring>
 
 #include <pthread.h>
 
 #include "main.h"
+#include "rw_lock_table.h"
 #include "transaction.h"
 #include "directed_graph.h"
 
@@ -43,18 +45,18 @@ bool *threads_abort_flag; // N elements
 /* Below variables will be an array of R elements. */
 int64_t *records;
 std::vector<wait_q_elem_t> *record_wait_queues;
+rw_lock_status_t *rw_lock_table;
 
 // graph for detecting deadlock
 directed_graph *wait_for_graph;
 
-uint64_t global_timestamp = 0; // for deadlock situation. transaction killing order
-uint64_t global_execution_order = 0; // this value is used as a commid_id.
+// for deadlock situation. Transaction killing order
+uint64_t global_timestamp = 0; 
+
+// this value is used as a commid_id.
+uint64_t global_execution_order = 0; 
 
 pthread_mutex_t global_mutex = PTHREAD_MUTEX_INITIALIZER;
-
-// each record gets a conditional variable.
-pthread_rwlock_t *rw_lock;
-
 
 //TODO: commit and rollback implementation. how??
 
@@ -69,29 +71,30 @@ int main(const int argc, const char * const argv[])
   std::ios::sync_with_stdio(false);
 
   if (argc != 4) {
-    std::cout << "** This program requires three additional command line arguments **" << std::endl;
-    std::cout << "Usage: "<< argv[0] <<" [thread_num] [record_num] [max_execution_num]" << std::endl;
+    std::cout << "** This program requires three additional\
+      command line arguments **" << std::endl;
+    std::cout << "Usage: "<< argv[0]
+      <<" [thread_num] [record_num] [max_execution_num]" << std::endl;
     return EXIT_FAILURE;
   }
 
   // setting arguments
-  N = strtol(argv[1], NULL, 0); 
-  R = strtol(argv[2], NULL, 0);
-  E = strtol(argv[3], NULL, 0);
+  N = strtol(argv[1], NULL, 0) + 1; // # of threads. + 1 for not using zero.
+  R = strtol(argv[2], NULL, 0); // # of records
+  E = strtol(argv[3], NULL, 0); // max # of commit_id
 
   if (N == 0 || R == 0 || E == 0) {
-    std::cout << "** Command line arguments should be number except zero. **" << std::endl;
+    std::cout << "** Command line arguments\
+      should be number except zero. **" << std::endl;
     return EXIT_FAILURE;
   }
 
 #ifdef DBG
   std::cout << "Hello, world!" << std::endl;
-  std::cout << "thread_num: " << N << std::endl;
+  std::cout << "thread_num: " << N - 1 << std::endl;
   std::cout << "record: " << R << std::endl;
   std::cout << "max_execution_num: " << E << std::endl;
 #endif
-
-  N++;// + 1 for not using zero.
 
   initialize_global_variables();
   srand(time(NULL));
@@ -109,22 +112,11 @@ int main(const int argc, const char * const argv[])
     pthread_join(threads[i], NULL);
   }
 
-
-
   deallocate_global_variables();
   return 0;
 }
 
 void initialize_global_variables() {
-  // lock initialization
-  
-  rw_lock = (pthread_rwlock_t*)malloc(R * sizeof(*rw_lock));
-  assert(rw_lock != nullptr);
-
-  for (uint64_t i = 0; i < R; ++i) {
-    rw_lock[i] = PTHREAD_RWLOCK_INITIALIZER;
-  }
-
   cond_var = (pthread_cond_t*)malloc((N) * sizeof(*cond_var));
   assert(cond_var != nullptr);
 
@@ -153,13 +145,19 @@ void initialize_global_variables() {
   record_wait_queues = new std::vector<wait_q_elem_t>[R];
   assert(record_wait_queues != nullptr);
 
+  rw_lock_table = (rw_lock_status_t*)
+    malloc ( R * sizeof(*rw_lock_table) );
+  memset(rw_lock_table, RW_UNLOCK, R * sizeof(*rw_lock_table));
+
   wait_for_graph = new directed_graph(N);
+  assert(wait_for_graph != nullptr);
 }
 
 void deallocate_global_variables() {
   // Free allocated memories
   
   delete wait_for_graph;
+  free(rw_lock_table);
   delete[] record_wait_queues;
 
   free(threads_abort_flag);
@@ -170,9 +168,5 @@ void deallocate_global_variables() {
   for (uint64_t i = 0; i < N; ++i) {
     pthread_cond_destroy(&cond_var[i]);
   }
-  for (uint64_t i = 0; i < R; ++i) {
-    pthread_rwlock_destroy(&rw_lock[i]);
-  }
   free(cond_var);
-  free(rw_lock);
 }

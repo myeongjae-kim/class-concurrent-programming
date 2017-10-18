@@ -94,7 +94,8 @@ std::vector<uint64_t> directed_graph::get_cycle(uint64_t from) {
     // push destination to stack
 
 #ifdef GRAPH_DBG
-    std::cout << "(get_cycle) ** Start finding a cycle that includes " << from << " **" << std::endl;
+    std::cout << "(get_cycle) ** Start finding a cycle that includes "
+      << from << " **" << std::endl;
     std::cout << "(get_cycle)       from " << from <<" to " << to << std::endl;
 #endif
 
@@ -107,12 +108,15 @@ std::vector<uint64_t> directed_graph::get_cycle(uint64_t from) {
       std::cout << "(get_cycle) " << cycle_member_nodes.back();
 
       
-      for (uint64_t i = cycle_member_nodes.size() - 2; i < cycle_member_nodes.size(); --i) {
+      for (uint64_t i = cycle_member_nodes.size() - 2;
+          i < cycle_member_nodes.size();
+          --i) {
         std::cout << " -> " << cycle_member_nodes[i];
       }
       std::cout << std::endl;
 
-      std::cout << "(get_cycle) **  End finding a cycle that includes " << from << "  **" << std::endl;
+      std::cout << "(get_cycle) **  End finding a cycle that includes "
+        << from << "  **" << std::endl;
 #endif
 
       return cycle_member_nodes;
@@ -122,7 +126,8 @@ std::vector<uint64_t> directed_graph::get_cycle(uint64_t from) {
 
 #ifdef GRAPH_DBG
     std::cout << "(get_cycle) cycle not found" << std::endl;
-    std::cout << "(get_cycle) **  End finding a cycle that includes " << from << "  **" << std::endl;
+    std::cout << "(get_cycle) **  End finding a cycle that includes "
+      << from << "  **" << std::endl;
 #endif
 
 
@@ -154,7 +159,8 @@ bool directed_graph::get_cycle_recur(uint64_t from,
     if (visited.find(to) == visited.end()) {
 
 #ifdef GRAPH_DBG
-      std::cout << "(get_cycle_recur) from " << current_node <<" to " << to << std::endl;
+      std::cout << "(get_cycle_recur) from " << current_node
+        <<" to " << to << std::endl;
 #endif
 
       if (get_cycle_recur(from, to, cycle_member_nodes, visited)) {

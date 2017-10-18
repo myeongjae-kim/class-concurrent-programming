@@ -2,7 +2,11 @@
 
 #include <iostream>
 
-void directed_graph_test()
+void temp1(directed_graph &G, std::vector<uint64_t>& cycle_member) {
+  cycle_member = G.get_cycle(3);
+}
+
+int main(void)
 {
   directed_graph G(11);
 
@@ -21,18 +25,21 @@ void directed_graph_test()
 
   G.show_all_edges();
 
-  G.has_cycle_start_from(1);
-
-  std::cout << std::endl;
-
-  G.has_cycle_start_from(7);
 
   std::vector<uint64_t> && find_result = G.get_cycle(7);
+  G.print_cycle(find_result);
+
+  temp1(G, find_result);
+  G.print_cycle(find_result);
+
+  find_result = G.get_cycle(7);
   G.print_cycle(find_result);
 
   find_result = G.get_cycle(3);
   G.print_cycle(find_result);
 
+
   find_result = G.get_cycle(1);
   G.print_cycle(find_result);
+
 }

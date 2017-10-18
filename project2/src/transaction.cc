@@ -29,7 +29,7 @@ extern std::vector<wait_q_elem_t> *record_wait_queues;
 extern directed_graph *wait_for_graph;
 
 extern pthread_mutex_t global_mutex;
-extern pthread_rwlock_t *rw_lock;
+// extern pthread_rwlock_t *rw_lock;
 extern pthread_cond_t *cond_var;
 extern uint64_t *threads_timestamp;
 extern bool *threads_abort_flag;
@@ -199,7 +199,7 @@ void* transaction(void* arg) {
     }
 
     // If ahead writer is not exist, get read lock.
-    pthread_rwlock_rdlock(&rw_lock[i]);
+    // pthread_rwlock_rdlock(&rw_lock[i]);
 
 
     // remove element from wait_for graph
@@ -305,7 +305,7 @@ void* transaction(void* arg) {
 
 
     // If ahead writer is not exist, get read lock.
-    pthread_rwlock_wrlock(&rw_lock[j]);
+    // pthread_rwlock_wrlock(&rw_lock[j]);
 
     // remove element from wait_for graph
     if (reader_or_writer_exist) {
@@ -408,7 +408,7 @@ void* transaction(void* arg) {
     }
 
     // If ahead writer is not exist, get read lock.
-    pthread_rwlock_wrlock(&rw_lock[k]);
+    // pthread_rwlock_wrlock(&rw_lock[k]);
 
     // remove element from wait_for graph
     if (reader_or_writer_exist) {
@@ -474,9 +474,9 @@ void* transaction(void* arg) {
     }
 
     // Release all rw_lock
-    pthread_rwlock_unlock(&rw_lock[i]);
-    pthread_rwlock_unlock(&rw_lock[j]);
-    pthread_rwlock_unlock(&rw_lock[k]);
+    // pthread_rwlock_unlock(&rw_lock[i]);
+    // pthread_rwlock_unlock(&rw_lock[j]);
+    // pthread_rwlock_unlock(&rw_lock[k]);
 
     uint64_t commit_id = ++global_execution_order;
     log.commit_id = commit_id;
@@ -653,8 +653,8 @@ void rollback(log_t &log) {
       }
       assert(k_deleted == true);
 
-      pthread_rwlock_unlock(&rw_lock[log.i]);
-      pthread_rwlock_unlock(&rw_lock[log.j]);
+      // pthread_rwlock_unlock(&rw_lock[log.i]);
+      // pthread_rwlock_unlock(&rw_lock[log.j]);
 
       records[log.j] -= (log.value_of_i + 1);
       break;
@@ -714,7 +714,7 @@ void rollback(log_t &log) {
 
 
 
-      pthread_rwlock_unlock(&rw_lock[log.i]);
+      // pthread_rwlock_unlock(&rw_lock[log.i]);
 
 
       // write is not yet occurred.

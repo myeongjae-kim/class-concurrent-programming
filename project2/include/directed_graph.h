@@ -39,7 +39,8 @@ private:
   bool is_node_exist(uint64_t node_number);
 
 
-  bool get_cycle_recur(uint64_t from, uint64_t current_node, std::vector<uint64_t> &stack, std::unordered_set<uint64_t> &visited);
+  bool get_cycle_recur(uint64_t from, uint64_t current_node,
+      std::vector<uint64_t> &stack, std::unordered_set<uint64_t> &visited);
 
 };
 
