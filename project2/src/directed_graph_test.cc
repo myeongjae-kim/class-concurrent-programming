@@ -10,8 +10,11 @@ int main(void)
 {
   directed_graph G(11);
 
-  G.add_edge(1, 2);
+
   G.add_edge(2, 3);
+  G.add_edge(2, 3);
+  G.add_edge(2, 3);
+
   G.add_edge(3, 4);
   G.add_edge(4, 5);
   G.add_edge(5, 6);
@@ -23,8 +26,26 @@ int main(void)
   G.add_edge(10, 5);
   G.add_edge(4, 2);
 
+  G.add_edge(1, 2);
+  G.add_edge(1, 2);
+  G.add_edge(1, 2);
+  G.add_edge(1, 2);
+
   G.show_all_edges();
 
+  G.remove_edge(1,2);
+  G.remove_edge(1,2);
+  G.remove_edge(1,2);
+
+  G.show_all_edges();
+
+  G.remove_edge(1,2);
+
+  G.show_all_edges();
+
+  G.add_edge(1, 2);
+
+  G.show_all_edges();
 
   std::vector<uint64_t> && find_result = G.get_cycle(7);
   G.print_cycle(find_result);

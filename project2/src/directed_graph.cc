@@ -11,7 +11,7 @@ directed_graph::directed_graph (uint64_t number_of_nodes) {
   this->number_of_nodes = number_of_nodes;
 
   // create nodes
-  nodes = new std::unordered_set<uint64_t>[this->number_of_nodes];
+  nodes = new std::vector<dest_and_count_t>[this->number_of_nodes];
 }
 
 directed_graph::~directed_graph () {
@@ -36,28 +36,73 @@ bool directed_graph::is_node_exist(uint64_t node_number) {
 
 bool directed_graph::add_edge(uint64_t from, uint64_t to) {
   // check whether node is exist
+  dest_and_count_t to_buf = {to, 1};
   if ( ! (is_node_exist(from) && is_node_exist(to)) ) {
     return false;
   }
 
-  // add an edge
-  nodes[from].insert(to);
+  // find myself
+  auto iter = nodes[from].begin();
+  for (;iter != nodes[from].end(); iter++) {
+    if (*iter == to_buf) {
+      // found!
+      break;
+    }
+  }
+
+  if (iter != nodes[from].end()) {
+    // edge is already exists.
+    // increase count
+    iter->count++;
+  } else {
+    // edge is not exist
+    // add an edge
+    nodes[from].push_back(to_buf);
+  }
   return true;
 }
 
 bool directed_graph::remove_edge(uint64_t from, uint64_t to) {
+  dest_and_count_t to_buf = {to, 1};
   // check whether node is exist
   if ( ! (is_node_exist(from) && is_node_exist(to)) ) {
     return false;
   }
 
-  // remove an edge
-  nodes[from].erase(to);
-  return true;
+  // find myself
+  auto iter = nodes[from].begin();
+  for (;iter != nodes[from].end(); iter++) {
+    if (*iter == to_buf) {
+      // found!
+      break;
+    }
+  }
+
+  if (iter != nodes[from].end()) {
+    // edge is exists.
+    // remove an edge
+    assert(iter->count != 0);
+
+    // Remove edge when count is one.
+    if (iter->count == 1) {
+      nodes[from].erase(iter);
+    } else {
+      // decrease count.
+      // remove one edge
+      iter->count--;
+    }
+    return true;
+  } else {
+    // edge is not exist
+    std::cout << "(remove_edge) edge from " << from << " to "
+      << to << " does not exist!"<< std::endl;
+    return false;
+  }
 }
 
 void directed_graph::show_all_edges() {
-  uint64_t edge_count = 0;
+  uint64_t distinct_edge_count = 0;
+  uint64_t all_edge_count = 0;
 
   // node is start from one.
   std::cout << "** Printing All Edges **" << std::endl;
@@ -66,13 +111,20 @@ void directed_graph::show_all_edges() {
   for (uint64_t from = 0; from < number_of_nodes; ++from) {
 
     // iterate all edges in each node
-    for (auto to : nodes[from]) {
-      std::cout << "Edge from "<< from << "\tto " << to << std::endl;
-      edge_count++;
+    for (auto to_buf : nodes[from]) {
+      std::cout << "Edge from "<< from << "\tto " << to_buf.dest
+        <<"\t count: " << to_buf.count <<  std::endl;
+      distinct_edge_count++;
+      all_edge_count += to_buf.count;
     }
   }
 
-  std::cout << "The number of edges: " << edge_count << std::endl;
+  std::cout << "The number of distinct edges: "
+    << distinct_edge_count << std::endl;
+
+  std::cout << "The number of all edges: "
+    << all_edge_count << std::endl;
+
   std::cout << "**  Printing is end   **" << std::endl;
 }
 
@@ -90,7 +142,7 @@ std::vector<uint64_t> directed_graph::get_cycle(uint64_t from) {
   std::unordered_set<uint64_t> visited;
 
   // DFS
-  for (auto to : nodes[from]) {
+  for (auto to_buf : nodes[from]) {
     // push destination to stack
 
 #ifdef GRAPH_DBG
@@ -100,8 +152,8 @@ std::vector<uint64_t> directed_graph::get_cycle(uint64_t from) {
 #endif
 
     // Call recursive function
-    if (get_cycle_recur(from, to, cycle_member_nodes, visited)) {
-      cycle_member_nodes.push_back(to);
+    if (get_cycle_recur(from, to_buf.dest, cycle_member_nodes, visited)) {
+      cycle_member_nodes.push_back(to_buf.dest);
 
 #ifdef GRAPH_DBG
       std::cout << "(get_cycle) cycle found" << std::endl;
@@ -154,17 +206,17 @@ bool directed_graph::get_cycle_recur(uint64_t from,
   }
 
   // Recursion process
-  for (auto to : nodes[current_node]) {
+  for (auto to_buf : nodes[current_node]) {
     // do not visit node again
-    if (visited.find(to) == visited.end()) {
+    if (visited.find(to_buf.dest) == visited.end()) {
 
 #ifdef GRAPH_DBG
       std::cout << "(get_cycle_recur) from " << current_node
         <<" to " << to << std::endl;
 #endif
 
-      if (get_cycle_recur(from, to, cycle_member_nodes, visited)) {
-        cycle_member_nodes.push_back(to);
+      if (get_cycle_recur(from, to_buf.dest, cycle_member_nodes, visited)) {
+        cycle_member_nodes.push_back(to_buf.dest);
         return true;
       }
 

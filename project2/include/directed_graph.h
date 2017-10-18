@@ -7,6 +7,7 @@
 #ifndef DIRECTED_GRAPH_H
 #define DIRECTED_GRAPH_H
 
+#include <vector>
 #include <unordered_set>
 #include <iostream>
 #include <queue>
@@ -16,6 +17,29 @@
 #include <cassert>
 
 // #define GRAPH_DBG
+typedef struct _dest_and_count {
+  uint64_t dest;
+  int64_t count;
+
+  bool operator==(struct _dest_and_count &rhs) {
+    return dest == rhs.dest;
+  }
+  bool operator!=(struct _dest_and_count &rhs) {
+    return dest != rhs.dest;
+  }
+  bool operator<=(struct _dest_and_count &rhs) {
+    return dest <= rhs.dest;
+  }
+  bool operator>=(struct _dest_and_count &rhs) {
+    return dest >= rhs.dest;
+  }
+  bool operator<(struct _dest_and_count &rhs) {
+    return dest < rhs.dest;
+  }
+  bool operator>(struct _dest_and_count &rhs) {
+    return dest > rhs.dest;
+  }
+}dest_and_count_t;
 
 class directed_graph
 {
@@ -34,10 +58,9 @@ public:
 
 private:
   uint64_t number_of_nodes;
-  std::unordered_set<uint64_t> *nodes;
+  std::vector<dest_and_count_t> *nodes;
 
   bool is_node_exist(uint64_t node_number);
-
 
   bool get_cycle_recur(uint64_t from, uint64_t current_node,
       std::vector<uint64_t> &stack, std::unordered_set<uint64_t> &visited);
