@@ -4,8 +4,8 @@
  * Due date             : 2017-10-22
  * Compilation Standard : c++11 */
 
-#ifndef RW_LOCK_TABLE_H
-#define RW_LOCK_TABLE_H
+#ifndef __RW_LOCK_TABLE_H__
+#define __RW_LOCK_TABLE_H__
 
 #include <vector>
 
@@ -54,24 +54,43 @@ public:
   bool wrlock(uint64_t tid, phase_t phase, uint64_t record_id,
    pthread_mutex_t *global_mutex, std::vector<uint64_t> &cycle_member);
 
-  // Release acquired lock.
-  // 1. Check whether a winner tid is same with me. If not, assert().
-  // 2. Is lock status RW_READER_LOCK or RW_WRITER_LOCK?
+  // This function releases acquired lock.
+  // 1. Is lock status RW_READER_LOCK or RW_WRITER_LOCK?
   //  
-  //  Dequeue from wait queues.
-  //  Removed edge from wait_for_graph.
-  //  Wake up sleeping thread who is waiting me.
+  //  What we have to do is below:
+  //   - Dequeue from wait queues.
+  //   - Removed edge from wait_for_graph.
+  //   - Wake up sleeping thread who is waiting me.
   //   
   //   2-1. RW_READER_LOCK.
   //     2-1-1. Find my location.
-  //     2-1-2. Remove from queue.
-  //     2-1-3. If a writer is top of a queue, wake a writer up.
+  //      2-1-1-1. If any writer is exist in front of me, it is an error.
+  //      2-1-1-2. Case1. I am top of a queue
+  //        2-1-1-2-1. If a writer follows, remove edge from the writer to me
+  //                  , wake the writer up, and dequeue myself.
+  //        2-1-1-2-2. Else, just dequeue myself.
+  //
+  //      2-1-1-3. Case2. I am not the top of a queue.
+  //                     It means that in front of me there is at least
+  //                     one reader.
+  //        2-1-1-3-1. If a writer follows, remove edge from the writer to me
+  //                  , add an edge from the writer to ahead reader, and
+  //                  dequeue myself.
+  //        2-1-1-3-2. Else, just dequeue myself.
+  //     2-1-2. Decrease reader count.
   //
   //
   //   2-2. RW_WRITER_LOCK.
-  //
-  //TODO
+  //     2-2-1. Find my location. I should be a top of a queue.
+  //           If I am not a top, it means an error is occurred.
+  //     2-2-2. If any reader or writer follows me, remove edge from it to me
+  //           , wake it up, and dequeue myself.
+  //     2-2-2. If I am alone, just dequeue myself.
   bool unlock(uint64_t tid, uint64_t record_id);
+
+
+  // This function is a wrapper of wait_for_graph->print_cycle()
+  void print_deadlock(std::vector<uint64_t> &cycle_member);
 
   /***  When aborting a transaction
    * 1. Remove edges from the wait_for_graph.
@@ -95,7 +114,14 @@ private:
   directed_graph *wait_for_graph;
 
 
+  // Return true when acquiring is successful.
+  // Return false when a deadlock exists.
+  // More information is in rw_lock_table.h
   bool is_deadlock_exist(uint64_t tid, std::vector<uint64_t>& cycle_member);
+
+  // Subfunctions of unlock();
+  bool rd_unlock(uint64_t tid, uint64_t record_id);
+  bool wr_unlock(uint64_t tid, uint64_t record_id);
 };
 
 #endif

@@ -45,7 +45,7 @@ bool *threads_abort_flag; // N elements
 /* Below variables will be an array of R elements. */
 int64_t *records;
 std::vector<wait_q_elem_t> *record_wait_queues;
-rw_lock_status_t *rw_lock_table;
+rw_lock_table *lock_table;
 
 // graph for detecting deadlock
 directed_graph *wait_for_graph;
@@ -63,6 +63,11 @@ pthread_mutex_t global_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 void initialize_global_variables();
 void deallocate_global_variables();
+void rw_lock_table_test();
+
+std::vector<uint64_t> cycle_member;
+
+void* transaction_sample(void* arg);
 
 int main(const int argc, const char * const argv[])
 {
@@ -98,19 +103,25 @@ int main(const int argc, const char * const argv[])
 
   initialize_global_variables();
   srand(time(NULL));
-  // tid starts from one.
-  for (uint64_t i = 1; i < N; i++) {
-    if (pthread_create(&threads[i], 0, transaction, (void*)(i) ) < 0) {
-      std::cout << "(main) thread creation has been failed." << std::endl;
-      deallocate_global_variables();
-      return 1;
-    }
-  }
 
 
-  for (uint64_t i = 1; i < N; i++) {
-    pthread_join(threads[i], NULL);
-  }
+  rw_lock_table_test();
+
+
+
+/*   // tid starts from one.
+ *   for (uint64_t i = 1; i < N; i++) {
+ *     if (pthread_create(&threads[i], 0, transaction, (void*)(i) ) < 0) {
+ *       std::cout << "(main) thread creation has been failed." << std::endl;
+ *       deallocate_global_variables();
+ *       return 1;
+ *     }
+ *   }
+ *
+ *
+ *   for (uint64_t i = 1; i < N; i++) {
+ *     pthread_join(threads[i], NULL);
+ *   } */
 
   deallocate_global_variables();
   return 0;
@@ -145,9 +156,7 @@ void initialize_global_variables() {
   record_wait_queues = new std::vector<wait_q_elem_t>[R];
   assert(record_wait_queues != nullptr);
 
-  rw_lock_table = (rw_lock_status_t*)
-    malloc ( R * sizeof(*rw_lock_table) );
-  memset(rw_lock_table, RW_UNLOCK, R * sizeof(*rw_lock_table));
+  lock_table = new rw_lock_table(R, N);
 
   wait_for_graph = new directed_graph(N);
   assert(wait_for_graph != nullptr);
@@ -157,7 +166,7 @@ void deallocate_global_variables() {
   // Free allocated memories
   
   delete wait_for_graph;
-  free(rw_lock_table);
+  delete lock_table;
   delete[] record_wait_queues;
 
   free(threads_abort_flag);
@@ -169,4 +178,141 @@ void deallocate_global_variables() {
     pthread_cond_destroy(&cond_var[i]);
   }
   free(cond_var);
+}
+
+void rw_lock_table_test() {
+  std::cout << "lock_test" << std::endl;
+
+  // tid starts from one.
+  for (uint64_t i = 1; i < N; i++) {
+    if (pthread_create(&threads[i], 0, transaction_sample, (void*)(i) ) < 0) {
+      std::cout << "(main) thread creation has been failed." << std::endl;
+      deallocate_global_variables();
+      exit(1);
+    }
+  }
+
+  for (uint64_t i = 1; i < N; i++) {
+    pthread_join(threads[i], NULL);
+  }
+
+}
+
+void* transaction_sample(void* arg) {
+  uint64_t tid = uint64_t(arg);
+
+  uint64_t i, j, k;
+
+  while(1) {
+    i = rand() % R;
+
+    do{
+      j = rand() % R;
+    }while (i == j);
+
+    do{
+      k = rand() % R;
+    }while (k == i || k == j);
+
+    std::cout << "[tid: " << tid << ", record_id: " << i << "] ";
+    std::cout << "record lock acquire try"<< std::endl;
+
+    phase_t current_phase = READ;
+
+    pthread_mutex_lock(&global_mutex);
+    if(lock_table->rdlock(tid, i, &global_mutex, cycle_member) == false) {
+      //deadlock found
+      std::cout << "[tid: " << tid << ", record_id: " << i << "] ";
+      std::cout << "the deadlock is found" << std::endl;
+      lock_table->print_deadlock(cycle_member);
+      exit(1);
+    }
+    pthread_mutex_unlock(&global_mutex);
+
+    std::cout << "[tid: " << tid << ", record_id: " << i << "] ";
+    std::cout << "reader lock acquired" << std::endl;
+
+    for (int i = 0; i < 10; ++i) {
+      pthread_yield();
+      // do something
+    }
+    
+
+    std::cout << "[tid: " << tid << ", record_id: " << j << "] ";
+    std::cout << "writer lock acquire try" << std::endl;
+
+    current_phase = FIRST_WRITE;
+
+    pthread_mutex_lock(&global_mutex);
+    if(lock_table->wrlock(tid, current_phase, j, &global_mutex, cycle_member)
+        == false) {
+      //deadlock found
+      std::cout << "[tid: " << tid << ", record_id: " << j << "] ";
+      std::cout <<"the deadlock is found" << std::endl;
+      lock_table->print_deadlock(cycle_member);
+      exit(1);
+    }
+    pthread_mutex_unlock(&global_mutex);
+
+    std::cout << "[tid: " << tid << ", record_id: " << j << "] ";
+    std::cout << "writer lock acquired" << std::endl;
+
+    for (int i = 0; i < 10; ++i) {
+      pthread_yield();
+      // do something
+    }
+
+    std::cout << "[tid: " << tid << ", record_id: " << k << "] ";
+    std::cout << "writer lock acquire try" << std::endl;
+
+    current_phase = SECOND_WRITE;
+
+    pthread_mutex_lock(&global_mutex);
+    if(lock_table->wrlock(tid, current_phase, k, &global_mutex, cycle_member)
+        == false){
+      //deadlock found
+      std::cout << "[tid: " << tid << ", record_id: " << k << "] ";
+      std::cout << "the deadlock is found" << std::endl;
+      lock_table->print_deadlock(cycle_member);
+      exit(1);
+    }
+    pthread_mutex_unlock(&global_mutex);
+
+    std::cout << "[tid: " << tid << ", record_id: " << k << "] ";
+    std::cout << "writer lock acquired" << std::endl;
+
+    for (int i = 0; i < 10; ++i) {
+      pthread_yield();
+      // do something
+    }
+
+    pthread_mutex_lock(&global_mutex);
+    std::cout << "[tid: " << tid << ", record_id: " << j << "] ";
+    std::cout << "reader lock release try" << std::endl;
+
+    lock_table->unlock(tid, i);
+
+    std::cout << "[tid: " << tid << ", record_id: " << i << "] ";
+    std::cout << "reader lock released." << std::endl;
+
+    std::cout << "[tid: " << tid << ", record_id: " << j << "] ";
+    std::cout << "writer lock release try " << std::endl;
+
+    lock_table->unlock(tid, j);
+
+    std::cout << "[tid: " << tid << ", record_id: " << j << "] ";
+    std::cout << "writer lock released." << std::endl;
+
+    std::cout << "[tid: " << tid << ", record_id: " << k << "] ";
+    std::cout << "writer lock release try " << std::endl;
+
+    lock_table->unlock(tid, k);
+
+    std::cout << "[tid: " << tid << ", record_id: " << k << "] ";
+    std::cout << "writer lock released." << std::endl;
+
+    pthread_mutex_unlock(&global_mutex);
+  }
+
+  return nullptr;
 }

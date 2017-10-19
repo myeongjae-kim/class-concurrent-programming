@@ -5,8 +5,7 @@ CXXFLAGS = -g -Wall -Wextra -Wpedantic -std=c++11 -ltcmalloc_minimal
 
 # Macros specifying path for compile.
 
-# SRCS := $(wildcard src/*.cc)
-SRCS := $(wildcard src/*[^(_test)].cc) # exclue test sources
+SRCS := $(wildcard src/*.cc)
 OBJS := $(SRCS:.cc=.o)
 # BIN = ./bin/
 BIN = ./
