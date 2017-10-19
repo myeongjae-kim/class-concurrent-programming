@@ -1,10 +1,19 @@
 #include <cstring>
 #include <cassert>
+#include <algorithm>
 
 #include "rw_lock_table.h"
 
 // Allocate memories
-rw_lock_table::rw_lock_table(uint64_t R, uint64_t N){
+rw_lock_table::rw_lock_table(uint64_t R, uint64_t N,
+    uint64_t *threads_timestamp){
+  if (threads_timestamp == nullptr) {
+    std::cout << "(rw_lock_table) threads_timestampe\
+      should be an allocated heap memory" << std::endl;
+    exit(1);
+  }
+
+  this->threads_timestamp = threads_timestamp;
 
   table = (rw_lock_status_t*)malloc(R * sizeof(*table));
   assert(table != NULL);
@@ -24,9 +33,12 @@ rw_lock_table::rw_lock_table(uint64_t R, uint64_t N){
 
   wait_for_graph = new directed_graph(N);
   assert(wait_for_graph != NULL);
+
+  threads_abort_flag = (bool*)calloc(N, sizeof(*threads_abort_flag));
 }
 
 rw_lock_table::~rw_lock_table() {
+  free(threads_abort_flag);
   delete wait_for_graph;
   free(cond_var);
   delete[] record_wait_queues;
@@ -45,10 +57,16 @@ bool rw_lock_table::rdlock(uint64_t tid, uint64_t record_id,
   //  2-1. Waiting
   //    2-1-1. Add edge to wait_for graph.
   //    2-1-2. Do deadlock detection.
-  //    2-1-3. If deadlock is found, add deadlock members to cycle_member
-  //          and return false.
-  //    2-1-4. If deadlock is not found, do conditional wait.
+  //    2-1-3. If deadlock is found, add deadlock members to cycle_member.
+  //      2-1-3-1. Find the newest thread among cycle_member.
+  //      2-1-3-2. If I am the newest one, return false.
+  //      2-1-3-3. If I am not, turn abort flag of victim on.
+  //    2-1-4. Do conditional wait.
   //    2-1-5. Waken up! Check whether current status of queue is okay or not.
+  //    2-1-6. If an abort flag is truned on,
+  //          turn of the flag and return false.
+  //    2-1-7. If a deadlock detected again, at least I am not the victim.
+  //          Yield until a deadlock is removed.
   //  2-2. Not waiting. Go to get a lock
   //  2-3. Write status to lock table and increase readers_count
 
@@ -98,29 +116,45 @@ bool rw_lock_table::rdlock(uint64_t tid, uint64_t record_id,
       wait_for_graph->add_edge(tid, ahead_writer_tid);
 
       //    2-1-2. Do deadlock detection.
-
-      if (is_deadlock_exist(tid, cycle_member)) {
-        // Deadlock is found
-        // 2-1-3. If deadlock is found, add deadlock members to cycle_member.
-        //
-        //       Deadlock members are in cycle_member.
-        //       is_deadlock_exist() did the work.
-        //
-        //       Find the newest thread and turn its abort flag on.
-        //
-        //       If the one is myself, clear queue and graph
-        //       and return false.
-        //
+      if (is_myself_deadlock_victim(tid, cycle_member)) {
+        // I am the victim of deadlock. return false.
         return false;
-      } else {
-        // 2-1-4. If deadlock is not found, do conditional wait.
       }
 
-      // Wait
+      //  2-1-4. Do conditional wait.
       std::cout << "[tid: " << tid << "]\
         (rdlock) Go to sleep" << std::endl;
 
       pthread_cond_wait(&cond_var[tid], global_mutex);
+
+      //    2-1-6. If an abort flag is truned on,
+      //          turn of the flag and return false.
+      //
+      // If I am a victim of deadlock problem,
+      // abort myself.
+      if (threads_abort_flag[tid]) {
+        // turn off the flag (reinitialization)
+        
+        // Check a deadlock is really exists.
+        assert(is_deadlock_exist(tid, cycle_member));
+        
+
+        std::cout << "[tid: " << tid << "]\
+          (rdlock) I am the victim of deadlock. Return false "
+          << std::endl;
+
+        threads_abort_flag[tid] = false;
+        return false;
+      }
+
+      // 2-1-7. If a deadlock detected again, at least I am not the victim.
+      // yield until a deadlock is removed.
+      while(is_deadlock_exist(tid, cycle_member)) {
+        pthread_yield();
+      }
+      
+      // assert(finally, deadlock is not exist!);
+      assert(is_deadlock_exist(tid, cycle_member) == false);
 
       // 2-1-5. Waken up! Check whether current status of queue is okay or not.
       // If there is a writer in front of me,
@@ -224,23 +258,45 @@ bool rw_lock_table::wrlock(uint64_t tid, phase_t phase, uint64_t record_id,
     wait_for_graph->add_edge(tid, ahead_rw_tid);
 
     //    2-1-2. Do deadlock detection.
-    if (is_deadlock_exist(tid, cycle_member)) {
-      // Deadlock is found
-      // 2-1-3. If deadlock is found, add deadlock members to cycle_member
-      //       and return false.
-      //
-      // Deadlock members are in cycle_member.
-      // is_deadlock_exist() did the work.
+    if (is_myself_deadlock_victim(tid, cycle_member)) {
+      // I am the victim of deadlock. return false.
       return false;
-    } else {
-      // 2-1-4. If deadlock is not found, do conditional wait.
     }
 
-    // Wait
+    // 2-1-4. If deadlock is not found, do conditional wait.
     std::cout << "[tid: " << tid << "]\
       (wrlock) Go to sleep" << std::endl;
 
     pthread_cond_wait(&cond_var[tid], global_mutex);
+
+    //    2-1-6. If an abort flag is truned on,
+    //          turn of the flag and return false.
+    //
+    // If I am a victim of deadlock problem,
+    // abort myself.
+    if (threads_abort_flag[tid]) {
+      // turn off the flag (reinitialization)
+
+      // Check a deadlock is really exists.
+      assert(is_deadlock_exist(tid, cycle_member));
+
+      std::cout << "[tid: " << tid << "]\
+        (rdlock) I am the victim of deadlock. Return false "
+        << std::endl;
+
+      threads_abort_flag[tid] = false;
+      return false;
+    }
+
+    // 2-1-7. If a deadlock detected again, at least I am not the victim.
+    // yield until a deadlock is removed.
+    while(is_deadlock_exist(tid, cycle_member)) {
+      pthread_yield();
+    }
+
+    // assert(finally, deadlock is not exist!);
+    assert(is_deadlock_exist(tid, cycle_member) == false);
+
 
     // 2-1-5. Waken up! Check whether current status of queue is okay or not.
     // If the top of queue is me, it means that I acquired lock.
@@ -255,7 +311,7 @@ bool rw_lock_table::wrlock(uint64_t tid, phase_t phase, uint64_t record_id,
   //  2-2. Not waiting. Go to get a lock
   //  Error case
   assert(table[record_id] != RW_INVALID);
-  
+
   // Lock status should not be a RW_WRITER_LOCK
   assert(table[record_id] != RW_WRITER_LOCK);
 
@@ -486,3 +542,59 @@ void rw_lock_table::print_deadlock(std::vector<uint64_t> &cycle_member) {
   wait_for_graph->print_cycle(cycle_member);
 }
 
+
+
+uint64_t rw_lock_table::get_newest_tid(
+    std::vector<uint64_t> &cycle_member) {
+
+  // Find the largest timestamp
+  std::sort(cycle_member.begin(),
+      cycle_member.end(),
+      [this](uint64_t lhs_tid, uint64_t rhs_tid){
+      return threads_timestamp[lhs_tid] >
+      threads_timestamp[rhs_tid];
+      });
+
+  // return a tid of largest time stamp
+  return cycle_member[0];
+}
+
+
+// This function detects deadlock.
+// If a deadlock is found, it trun on a victim's abort flag.
+// If current thread is a victim, this function returns true.
+// Otherwise, false.
+bool rw_lock_table::is_myself_deadlock_victim(uint64_t tid, 
+    std::vector<uint64_t> &cycle_member){
+
+  uint64_t newest_tid;
+  if (is_deadlock_exist(tid, cycle_member)) {
+    // Deadlock is found
+    //
+    // 2-1-3. If deadlock is found, add deadlock members to cycle_member.
+    //   2-1-3-1. Find the newest thread among cycle_member.
+    //   2-1-3-2. If I am the newest one, return true.
+    //   2-1-3-3. If I am not, turn abort flag of victim on.
+
+    // Find the newest thread and turn its abort flag on.
+    newest_tid = get_newest_tid(cycle_member);
+
+    std::cout << "[tid: " << tid << "]\
+      (is_myself_deadlock_victim) Deadlock found. The victim: " << newest_tid << std::endl;
+
+    if (newest_tid == tid) {
+      // Just return false.
+      // Resource clearing is occurred out of this function.
+
+      std::cout << "[tid: " << tid << "]\
+        (is_myself_deadlock_victim) Myself is the victim! " << newest_tid << std::endl;
+      return true;
+    } else {
+      // turn abort flag on of newest tid.
+      threads_abort_flag[newest_tid] = true;
+      pthread_cond_signal(&cond_var[newest_tid]);
+    }
+  }
+
+  return false;
+}

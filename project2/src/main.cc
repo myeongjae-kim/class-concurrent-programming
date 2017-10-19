@@ -44,11 +44,7 @@ bool *threads_abort_flag; // N elements
 
 /* Below variables will be an array of R elements. */
 int64_t *records;
-std::vector<wait_q_elem_t> *record_wait_queues;
 rw_lock_table *lock_table;
-
-// graph for detecting deadlock
-directed_graph *wait_for_graph;
 
 // for deadlock situation. Transaction killing order
 uint64_t global_timestamp = 0; 
@@ -151,21 +147,14 @@ void initialize_global_variables() {
   }
 
 
-  record_wait_queues = new std::vector<wait_q_elem_t>[R];
-  assert(record_wait_queues != nullptr);
+  lock_table = new rw_lock_table(R, N, threads_timestamp);
 
-  lock_table = new rw_lock_table(R, N);
-
-  wait_for_graph = new directed_graph(N);
-  assert(wait_for_graph != nullptr);
 }
 
 void deallocate_global_variables() {
   // Free allocated memories
   
-  delete wait_for_graph;
   delete lock_table;
-  delete[] record_wait_queues;
 
   free(threads_abort_flag);
   free(threads_timestamp);
@@ -185,6 +174,9 @@ void* transaction_sample(void* arg) {
   uint64_t i, j, k;
 
   while(1) {
+    // This is used to select which one is to be aborted.
+    threads_timestamp[tid] = ++global_timestamp;
+
     i = rand() % R;
 
     do{

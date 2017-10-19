@@ -40,7 +40,7 @@ public:
   //
   // The record id starts from 0 to R.
   // The thread id starts from 1 to N-1.
-  rw_lock_table (uint64_t R, uint64_t N);
+  rw_lock_table (uint64_t R, uint64_t N, uint64_t *threads_timestamp);
   virtual ~rw_lock_table ();
 
   // Return true when acquiring is successful.
@@ -124,9 +124,12 @@ private:
 
   // It is an array of N elements
   pthread_cond_t *cond_var;
+  bool *threads_abort_flag;
 
   // It is a graph that has N node.
   directed_graph *wait_for_graph;
+
+  uint64_t *threads_timestamp;
 
 
   // Return true when acquiring is successful.
@@ -137,6 +140,11 @@ private:
   // Subfunctions of unlock();
   bool rd_unlock(uint64_t tid, uint64_t record_id);
   bool wr_unlock(uint64_t tid, uint64_t record_id);
+
+  uint64_t get_newest_tid(std::vector<uint64_t> &cycle_member);
+
+  bool is_myself_deadlock_victim(uint64_t tid, 
+      std::vector<uint64_t> &cycle_member);
 };
 
 #endif
