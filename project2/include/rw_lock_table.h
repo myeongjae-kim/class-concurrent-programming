@@ -101,7 +101,8 @@ public:
   //         Change lock status to RW_UNLOCK
   //   2-2-2. If I am alone, just dequeue myself.
   //         Change lock status to RW_UNLOCK
-  bool unlock(uint64_t tid, uint64_t record_id);
+  bool unlock(uint64_t tid, uint64_t record_id,
+      std::vector<uint64_t> &cycle_member);
 
 
   // This function is a wrapper of wait_for_graph->print_cycle()
@@ -138,7 +139,8 @@ private:
   bool is_deadlock_exist(uint64_t tid, std::vector<uint64_t>& cycle_member);
 
   // Subfunctions of unlock();
-  bool rd_unlock(uint64_t tid, uint64_t record_id);
+  bool rd_unlock(uint64_t tid, uint64_t record_id,
+      std::vector<uint64_t> &cycle_member);
   bool wr_unlock(uint64_t tid, uint64_t record_id);
 
   uint64_t get_newest_tid(std::vector<uint64_t> &cycle_member);

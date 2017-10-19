@@ -61,7 +61,6 @@ void initialize_global_variables();
 void deallocate_global_variables();
 void rw_lock_table_test();
 
-std::vector<uint64_t> cycle_member;
 
 int main(const int argc, const char * const argv[])
 {
@@ -174,15 +173,14 @@ void deallocate_global_variables() {
  * Only transacion related codes are exist below. */
 
 void read_record(log_t &log) {
-  std::cout << "[tid: " << log.tid << ", record_id: "
-    << log.i << "] ";
-  std::cout << "record lock acquire try"<< std::endl;
+  std::cout << "[tid: " << log.tid << ", record_id: " << log.i << "] ";
+  std::cout << "reader lock acquire try"<< std::endl;
 
-  if(lock_table->rdlock(log.tid, log.i, &global_mutex, cycle_member) == false) {
+  if(lock_table->rdlock(log.tid, log.i, &global_mutex, *log.cycle_member) == false) {
     //deadlock found
     std::cout << "[tid: " << log.tid << ", record_id: " << log.i << "] ";
     std::cout << "the deadlock is found" << std::endl;
-    lock_table->print_deadlock(cycle_member);
+    lock_table->print_deadlock(*log.cycle_member);
 
     exit(1);
   }
@@ -193,37 +191,39 @@ void read_record(log_t &log) {
 
 void first_write_record(log_t &log) {
   std::cout << "[tid: " << log.tid << ", record_id: " << log.j << "] ";
-  std::cout << "writer lock acquire try" << std::endl;
+  std::cout << "first writer lock acquire try" << std::endl;
 
-  if(lock_table->wrlock(log.tid, FIRST_WRITE, log.j, &global_mutex, cycle_member)
+  if(lock_table->wrlock(log.tid, FIRST_WRITE, log.j, &global_mutex,
+        *log.cycle_member)
       == false) {
     //deadlock found
     std::cout << "[tid: " << log.tid << ", record_id: " << log.j << "] ";
     std::cout <<"the deadlock is found" << std::endl;
-    lock_table->print_deadlock(cycle_member);
+    lock_table->print_deadlock(*log.cycle_member);
     exit(1);
   }
 
   std::cout << "[tid: " << log.tid << ", record_id: " << log.j << "] ";
-  std::cout << "writer lock acquired" << std::endl;
+  std::cout << "first writer lock acquired" << std::endl;
 
 }
 
 void second_write_record(log_t &log) {
   std::cout << "[tid: " << log.tid << ", record_id: " << log.k << "] ";
-  std::cout << "writer lock acquire try" << std::endl;
+  std::cout << "second writer lock acquire try" << std::endl;
 
-  if(lock_table->wrlock(log.tid, SECOND_WRITE, log.k, &global_mutex, cycle_member)
+  if(lock_table->wrlock(log.tid, SECOND_WRITE, log.k, &global_mutex,
+        *log.cycle_member)
       == false){
     //deadlock found
     std::cout << "[tid: " << log.tid << ", record_id: " << log.k << "] ";
     std::cout << "the deadlock is found" << std::endl;
-    lock_table->print_deadlock(cycle_member);
+    lock_table->print_deadlock(*log.cycle_member);
     exit(1);
   }
 
   std::cout << "[tid: " << log.tid << ", record_id: " << log.k << "] ";
-  std::cout << "writer lock acquired" << std::endl;
+  std::cout << "second writer lock acquired" << std::endl;
 
 }
 
@@ -236,6 +236,8 @@ void* transaction_sample(void* arg) {
 
   uint64_t i, j, k;
 
+  std::vector<uint64_t> cycle_member;
+
   while(1) {
     // This is used to select which one is to be aborted.
     threads_timestamp[tid] = ++global_timestamp;
@@ -243,6 +245,7 @@ void* transaction_sample(void* arg) {
     // log
     log_t log;
     memset(&log, 0, sizeof(log_t));
+    log.cycle_member = &cycle_member;
 
     log.tid = tid;
     log.i = i = rand() % R;
@@ -286,29 +289,29 @@ void* transaction_sample(void* arg) {
     commit();
 
     pthread_mutex_lock(&global_mutex);
-    std::cout << "[tid: " << tid << ", record_id: " << j << "] ";
+    std::cout << "[tid: " << tid << ", record_id: " << i << "] ";
     std::cout << "reader lock release try" << std::endl;
 
-    lock_table->unlock(tid, i);
+    lock_table->unlock(tid, i, cycle_member);
 
     std::cout << "[tid: " << tid << ", record_id: " << i << "] ";
     std::cout << "reader lock released." << std::endl;
 
     std::cout << "[tid: " << tid << ", record_id: " << j << "] ";
-    std::cout << "writer lock release try " << std::endl;
+    std::cout << "first writer lock release try " << std::endl;
 
-    lock_table->unlock(tid, j);
+    lock_table->unlock(tid, j, cycle_member);
 
     std::cout << "[tid: " << tid << ", record_id: " << j << "] ";
-    std::cout << "writer lock released." << std::endl;
+    std::cout << "first writer lock released." << std::endl;
 
     std::cout << "[tid: " << tid << ", record_id: " << k << "] ";
-    std::cout << "writer lock release try " << std::endl;
+    std::cout << "second writer lock release try " << std::endl;
 
-    lock_table->unlock(tid, k);
+    lock_table->unlock(tid, k, cycle_member);
 
     std::cout << "[tid: " << tid << ", record_id: " << k << "] ";
-    std::cout << "writer lock released." << std::endl;
+    std::cout << "second writer lock released." << std::endl;
 
     pthread_mutex_unlock(&global_mutex);
   }

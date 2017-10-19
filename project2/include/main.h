@@ -21,6 +21,7 @@ typedef struct _wait_q_elem {
 
 typedef struct _log {
   uint64_t tid;
+  std::vector<uint64_t> *cycle_member;
 
   phase_t current_phase; // for rollback. How many did you write?
   bool is_done; // 'true' whan a transaction is done and before commit.
