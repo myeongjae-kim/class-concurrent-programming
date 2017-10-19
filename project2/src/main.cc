@@ -67,8 +67,6 @@ void rw_lock_table_test();
 
 std::vector<uint64_t> cycle_member;
 
-void* transaction_sample(void* arg);
-
 int main(const int argc, const char * const argv[])
 {
   // Disable IO sync with libc.
@@ -180,23 +178,6 @@ void deallocate_global_variables() {
   free(cond_var);
 }
 
-void rw_lock_table_test() {
-  std::cout << "lock_test" << std::endl;
-
-  // tid starts from one.
-  for (uint64_t i = 1; i < N; i++) {
-    if (pthread_create(&threads[i], 0, transaction_sample, (void*)(i) ) < 0) {
-      std::cout << "(main) thread creation has been failed." << std::endl;
-      deallocate_global_variables();
-      exit(1);
-    }
-  }
-
-  for (uint64_t i = 1; i < N; i++) {
-    pthread_join(threads[i], NULL);
-  }
-
-}
 
 void* transaction_sample(void* arg) {
   uint64_t tid = uint64_t(arg);
@@ -316,3 +297,22 @@ void* transaction_sample(void* arg) {
 
   return nullptr;
 }
+
+void rw_lock_table_test() {
+  std::cout << "lock_test" << std::endl;
+
+  // tid starts from one.
+  for (uint64_t i = 1; i < N; i++) {
+    if (pthread_create(&threads[i], 0, transaction_sample, (void*)(i) ) < 0) {
+      std::cout << "(main) thread creation has been failed." << std::endl;
+      deallocate_global_variables();
+      exit(1);
+    }
+  }
+
+  for (uint64_t i = 1; i < N; i++) {
+    pthread_join(threads[i], NULL);
+  }
+
+}
+

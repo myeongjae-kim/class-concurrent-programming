@@ -4,8 +4,8 @@
  * Due date             : 2017-10-22
  * Compilation Standard : c++11 */
 
-#ifndef MAIN_H
-#define MAIN_H
+#ifndef __MAIN_H__
+#define __MAIN_H__
 #include <cstdint>
 
 #define DBG

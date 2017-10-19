@@ -101,11 +101,16 @@ bool rw_lock_table::rdlock(uint64_t tid, uint64_t record_id,
 
       if (is_deadlock_exist(tid, cycle_member)) {
         // Deadlock is found
-        // 2-1-3. If deadlock is found, add deadlock members to cycle_member
+        // 2-1-3. If deadlock is found, add deadlock members to cycle_member.
+        //
+        //       Deadlock members are in cycle_member.
+        //       is_deadlock_exist() did the work.
+        //
+        //       Find the newest thread and turn its abort flag on.
+        //
+        //       If the one is myself, clear queue and graph
         //       and return false.
         //
-        // Deadlock members are in cycle_member.
-        // is_deadlock_exist() did the work.
         return false;
       } else {
         // 2-1-4. If deadlock is not found, do conditional wait.

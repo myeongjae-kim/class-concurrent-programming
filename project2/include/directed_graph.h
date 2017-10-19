@@ -4,8 +4,8 @@
  * Due date             : 2017-10-22
  * Compilation Standard : c++11 */
 
-#ifndef DIRECTED_GRAPH_H
-#define DIRECTED_GRAPH_H
+#ifndef __DIRECTED_GRAPH_H__
+#define __DIRECTED_GRAPH_H__
 
 #include <vector>
 #include <unordered_set>

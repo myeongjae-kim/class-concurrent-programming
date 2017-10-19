@@ -54,6 +54,8 @@ public:
   bool wrlock(uint64_t tid, phase_t phase, uint64_t record_id,
    pthread_mutex_t *global_mutex, std::vector<uint64_t> &cycle_member);
 
+
+  // unlock().
   // This function releases acquired lock.
   // 1. Is lock status RW_READER_LOCK or RW_WRITER_LOCK?
   //  
@@ -61,31 +63,44 @@ public:
   //   - Dequeue from wait queues.
   //   - Removed edge from wait_for_graph.
   //   - Wake up sleeping thread who is waiting me.
-  //   
-  //   2-1. RW_READER_LOCK.
-  //     2-1-1. Find my location.
-  //      2-1-1-1. If any writer is exist in front of me, it is an error.
-  //      2-1-1-2. Case1. I am top of a queue
-  //        2-1-1-2-1. If a writer follows, remove edge from the writer to me
-  //                  , wake the writer up, and dequeue myself.
-  //        2-1-1-2-2. Else, just dequeue myself.
   //
-  //      2-1-1-3. Case2. I am not the top of a queue.
-  //                     It means that in front of me there is at least
-  //                     one reader.
-  //        2-1-1-3-1. If a writer follows, remove edge from the writer to me
-  //                  , add an edge from the writer to ahead reader, and
-  //                  dequeue myself.
-  //        2-1-1-3-2. Else, just dequeue myself.
-  //     2-1-2. Decrease reader count.
+  // 2-1. RW_READER_LOCK.
+  //   2-1-1. Find my location.
+  //    2-1-1-1. If any writer is exist in front of me, it is an error.
+  //    2-1-1-2. Case1. I am top of a queue
+  //      2-1-1-2-1. If I am alone in queue, change lock status to RW_UNLOCK
+  //                and dequeue myself.
+  //      2-1-1-2-2. If a writer follows, remove edge from the writer to me
+  //                , wake the writer up, and dequeue myself.
+  //                Chagne lock status to RW_UNLOCK
+  //      2-1-1-2-3. If a reader follows, do not change lock status, and
+  //                dequeue myself.
   //
+  //    2-1-1-3. Case2. I am not the top of a queue.
+  //                   It means that in front of me there is at least
+  //                   one reader.
+  //      2-1-1-3-1. No follower, just dequeue myself.
+  //                Do not change lock status. It is still RW_READER_LOCK
   //
-  //   2-2. RW_WRITER_LOCK.
-  //     2-2-1. Find my location. I should be a top of a queue.
-  //           If I am not a top, it means an error is occurred.
-  //     2-2-2. If any reader or writer follows me, remove edge from it to me
-  //           , wake it up, and dequeue myself.
-  //     2-2-2. If I am alone, just dequeue myself.
+  //      2-1-1-3-2. If a writer follows, remove edge from the writer to me
+  //                , add an edge from the writer to ahead reader, and
+  //                dequeue myself.
+  //
+  //                Do not change lock status. It is still RW_READER_LOCK
+  //
+  //      2-1-1-3-3. If a reader follows, do not change lock status, and
+  //                dequeue myself.
+  //
+  //                Do not change lock status. It is still RW_READER_LOCK
+  //
+  // 2-2. RW_WRITER_LOCK.
+  //   2-2-1. Find my location. I should be a top of a queue.
+  //         If I am not a top, it means an error is occurred.
+  //   2-2-2. If any reader or writer follows me, remove edge from it to me
+  //         , wake it up, and dequeue myself.
+  //         Change lock status to RW_UNLOCK
+  //   2-2-2. If I am alone, just dequeue myself.
+  //         Change lock status to RW_UNLOCK
   bool unlock(uint64_t tid, uint64_t record_id);
 
 
