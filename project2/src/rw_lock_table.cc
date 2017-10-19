@@ -640,10 +640,10 @@ bool rw_lock_table::is_myself_deadlock_victim(uint64_t tid,
 
   uint64_t newest_tid;
 
-  std::cout <<
-    "(is_myself_deadlock_victim) printing cycle_member" << std::endl;
-  std::cout << "(is_myself_deadlock_victim) return: "  <<
-    is_deadlock_exist(tid, cycle_member) << std::endl;
+  /* std::cout <<
+   *   "(is_myself_deadlock_victim) printing cycle_member" << std::endl;
+   * std::cout << "(is_myself_deadlock_victim) return: "  <<
+   *   is_deadlock_exist(tid, cycle_member) << std::endl; */
 
   if (is_deadlock_exist(tid, cycle_member)) {
     // Deadlock is found
