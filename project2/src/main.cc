@@ -179,7 +179,7 @@ void read_record(log_t &log) {
   if(lock_table->rdlock(log.tid, log.i, &global_mutex, *log.cycle_member) == false) {
     //deadlock found
     std::cout << "[tid: " << log.tid << ", record_id: " << log.i << "] ";
-    std::cout << "the deadlock is found" << std::endl;
+    std::cout << "(read_record) the deadlock is found" << std::endl;
     lock_table->print_deadlock(*log.cycle_member);
 
     exit(1);
@@ -198,7 +198,7 @@ void first_write_record(log_t &log) {
       == false) {
     //deadlock found
     std::cout << "[tid: " << log.tid << ", record_id: " << log.j << "] ";
-    std::cout <<"the deadlock is found" << std::endl;
+    std::cout <<"(first_write_record) the deadlock is found" << std::endl;
     lock_table->print_deadlock(*log.cycle_member);
     exit(1);
   }
@@ -217,7 +217,7 @@ void second_write_record(log_t &log) {
       == false){
     //deadlock found
     std::cout << "[tid: " << log.tid << ", record_id: " << log.k << "] ";
-    std::cout << "the deadlock is found" << std::endl;
+    std::cout << "(second_write_record) the deadlock is found" << std::endl;
     lock_table->print_deadlock(*log.cycle_member);
     exit(1);
   }

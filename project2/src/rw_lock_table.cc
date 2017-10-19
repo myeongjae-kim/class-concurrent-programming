@@ -508,7 +508,6 @@ bool rw_lock_table::rd_unlock(uint64_t tid, uint64_t record_id,
       if (is_myself_deadlock_victim(follower->tid, cycle_member)) {
         // If I am the deadlock victim,
         // I will release locks soon.
-        // Do nothing
         std::cout
           << "\t(rd_unlock) If I am a victim, I will release a lock soon."
           << std::endl;
