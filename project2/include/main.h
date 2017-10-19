@@ -31,16 +31,6 @@ typedef struct _log {
   int64_t value_of_i; // value of record
   int64_t value_of_j;
   int64_t value_of_k;
-
-/*   bool i_queue_inserted;
- *   std::vector<wait_q_elem_t>::iterator i_queue_location;
- *
- *   bool j_queue_inserted;
- *   std::vector<wait_q_elem_t>::iterator j_queue_location;
- *
- *   bool k_queue_inserted;
- *   std::vector<wait_q_elem_t>::iterator k_queue_location; */
-
 } log_t;
 
 

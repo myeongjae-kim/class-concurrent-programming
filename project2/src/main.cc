@@ -168,6 +168,69 @@ void deallocate_global_variables() {
 }
 
 
+
+
+/* Below are transaction samples
+ * Only transacion related codes are exist below. */
+
+void read_record(log_t &log) {
+  std::cout << "[tid: " << log.tid << ", record_id: "
+    << log.i << "] ";
+  std::cout << "record lock acquire try"<< std::endl;
+
+  if(lock_table->rdlock(log.tid, log.i, &global_mutex, cycle_member) == false) {
+    //deadlock found
+    std::cout << "[tid: " << log.tid << ", record_id: " << log.i << "] ";
+    std::cout << "the deadlock is found" << std::endl;
+    lock_table->print_deadlock(cycle_member);
+
+    exit(1);
+  }
+
+  std::cout << "[tid: " << log.tid << ", record_id: " << log.i << "] ";
+  std::cout << "reader lock acquired" << std::endl;
+}
+
+void first_write_record(log_t &log) {
+  std::cout << "[tid: " << log.tid << ", record_id: " << log.j << "] ";
+  std::cout << "writer lock acquire try" << std::endl;
+
+  if(lock_table->wrlock(log.tid, FIRST_WRITE, log.j, &global_mutex, cycle_member)
+      == false) {
+    //deadlock found
+    std::cout << "[tid: " << log.tid << ", record_id: " << log.j << "] ";
+    std::cout <<"the deadlock is found" << std::endl;
+    lock_table->print_deadlock(cycle_member);
+    exit(1);
+  }
+
+  std::cout << "[tid: " << log.tid << ", record_id: " << log.j << "] ";
+  std::cout << "writer lock acquired" << std::endl;
+
+}
+
+void second_write_record(log_t &log) {
+  std::cout << "[tid: " << log.tid << ", record_id: " << log.k << "] ";
+  std::cout << "writer lock acquire try" << std::endl;
+
+  if(lock_table->wrlock(log.tid, SECOND_WRITE, log.k, &global_mutex, cycle_member)
+      == false){
+    //deadlock found
+    std::cout << "[tid: " << log.tid << ", record_id: " << log.k << "] ";
+    std::cout << "the deadlock is found" << std::endl;
+    lock_table->print_deadlock(cycle_member);
+    exit(1);
+  }
+
+  std::cout << "[tid: " << log.tid << ", record_id: " << log.k << "] ";
+  std::cout << "writer lock acquired" << std::endl;
+
+}
+
+void commit() {
+
+}
+
 void* transaction_sample(void* arg) {
   uint64_t tid = uint64_t(arg);
 
@@ -177,87 +240,50 @@ void* transaction_sample(void* arg) {
     // This is used to select which one is to be aborted.
     threads_timestamp[tid] = ++global_timestamp;
 
-    i = rand() % R;
+    // log
+    log_t log;
+    memset(&log, 0, sizeof(log_t));
+
+    log.tid = tid;
+    log.i = i = rand() % R;
 
     do{
-      j = rand() % R;
+      log.j = j = rand() % R;
     }while (i == j);
 
     do{
-      k = rand() % R;
+      log.k = k = rand() % R;
     }while (k == i || k == j);
 
-    std::cout << "[tid: " << tid << ", record_id: " << i << "] ";
-    std::cout << "record lock acquire try"<< std::endl;
-
-    phase_t current_phase = READ;
-
-    pthread_mutex_lock(&global_mutex);
-    if(lock_table->rdlock(tid, i, &global_mutex, cycle_member) == false) {
-      //deadlock found
-      std::cout << "[tid: " << tid << ", record_id: " << i << "] ";
-      std::cout << "the deadlock is found" << std::endl;
-      lock_table->print_deadlock(cycle_member);
-      exit(1);
-    }
-    pthread_mutex_unlock(&global_mutex);
-
-    std::cout << "[tid: " << tid << ", record_id: " << i << "] ";
-    std::cout << "reader lock acquired" << std::endl;
-
-    for (int i = 0; i < 10; ++i) {
-      pthread_yield();
-      // do something
-    }
     
-
-    std::cout << "[tid: " << tid << ", record_id: " << j << "] ";
-    std::cout << "writer lock acquire try" << std::endl;
-
-    current_phase = FIRST_WRITE;
-
     pthread_mutex_lock(&global_mutex);
-    if(lock_table->wrlock(tid, current_phase, j, &global_mutex, cycle_member)
-        == false) {
-      //deadlock found
-      std::cout << "[tid: " << tid << ", record_id: " << j << "] ";
-      std::cout <<"the deadlock is found" << std::endl;
-      lock_table->print_deadlock(cycle_member);
-      exit(1);
-    }
+    read_record(log);
     pthread_mutex_unlock(&global_mutex);
-
-    std::cout << "[tid: " << tid << ", record_id: " << j << "] ";
-    std::cout << "writer lock acquired" << std::endl;
 
     for (int i = 0; i < 10; ++i) {
       pthread_yield();
       // do something
     }
 
-    std::cout << "[tid: " << tid << ", record_id: " << k << "] ";
-    std::cout << "writer lock acquire try" << std::endl;
-
-    current_phase = SECOND_WRITE;
-
     pthread_mutex_lock(&global_mutex);
-    if(lock_table->wrlock(tid, current_phase, k, &global_mutex, cycle_member)
-        == false){
-      //deadlock found
-      std::cout << "[tid: " << tid << ", record_id: " << k << "] ";
-      std::cout << "the deadlock is found" << std::endl;
-      lock_table->print_deadlock(cycle_member);
-      exit(1);
-    }
+    first_write_record(log);
     pthread_mutex_unlock(&global_mutex);
-
-    std::cout << "[tid: " << tid << ", record_id: " << k << "] ";
-    std::cout << "writer lock acquired" << std::endl;
 
     for (int i = 0; i < 10; ++i) {
       pthread_yield();
       // do something
     }
+
+    pthread_mutex_lock(&global_mutex);
+    second_write_record(log);
+    pthread_mutex_unlock(&global_mutex);
+
+    for (int i = 0; i < 10; ++i) {
+      pthread_yield();
+      // do something
+    }
+
+    commit();
 
     pthread_mutex_lock(&global_mutex);
     std::cout << "[tid: " << tid << ", record_id: " << j << "] ";
