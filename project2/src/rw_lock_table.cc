@@ -118,6 +118,10 @@ bool rw_lock_table::rdlock(uint64_t tid, uint64_t record_id,
       //    2-1-2. Do deadlock detection.
       if (is_myself_deadlock_victim(tid, cycle_member)) {
         // I am the victim of deadlock. return false.
+        // TODO: Clear queue and graph
+
+        // I must be in the back of the queue.
+        assert(record_wait_queues[record_id].rbegin()->tid == tid);
         return false;
       }
 
@@ -145,6 +149,14 @@ bool rw_lock_table::rdlock(uint64_t tid, uint64_t record_id,
         std::cout << "[tid: " << tid << ", record_id: " << record_id
           << "] (rdlock) I am the victim of deadlock. Return false "
           << std::endl;
+
+        // TODO: Clear queue and graph
+        // Add adge from follow thread to ahead thread
+        // when follower thread is waiting me.
+        //
+        // Another deadlock can be occurred.
+        //
+        // I could be in the middle of the queue or back of the queue.
 
         threads_abort_flag[tid] = false;
         return false;
@@ -265,18 +277,22 @@ bool rw_lock_table::wrlock(uint64_t tid, phase_t phase, uint64_t record_id,
     //    2-1-2. Do deadlock detection.
     if (is_myself_deadlock_victim(tid, cycle_member)) {
       // I am the victim of deadlock. return false.
+      // TODO: Clear queue and graph
+
+      // I must be in the back of the queue.
+      assert(record_wait_queues[record_id].rbegin()->tid == tid);
       return false;
     }
 
     // 2-1-4. If deadlock is not found, do conditional wait.
     std::cout << "[tid: " << tid << ", record_id: " << record_id
-     << "] (wrlock) Go to sleep." << " write_phase:" << phase << std::endl;
+      << "] (wrlock) Go to sleep." << " write_phase:" << phase << std::endl;
 
     pthread_cond_wait(&cond_var[tid], global_mutex);
 
     std::cout << "[tid: " << tid << ", record_id: " << record_id
-     << "] (wrlock) Good morning!"
-     << " write_phase:" << phase << std::endl;
+      << "] (wrlock) Good morning!"
+      << " write_phase:" << phase << std::endl;
 
     //    2-1-6. If an abort flag is truned on,
     //          turn of the flag and return false.
@@ -290,8 +306,16 @@ bool rw_lock_table::wrlock(uint64_t tid, phase_t phase, uint64_t record_id,
       assert(is_deadlock_exist(tid, cycle_member));
 
       std::cout << "[tid: " << tid << ", record_id: " << record_id
-      << "] (rdlock) I am the victim of deadlock. Return false "
+        << "] (rdlock) I am the victim of deadlock. Return false "
         << std::endl;
+
+      // TODO: Clear queue and graph
+      // Add adge from follow thread to ahead thread
+      // when follower thread is waiting me.
+      //
+      // Another deadlock can be occurred.
+      //
+      // I could be in the middle of the queue or back of the queue.
 
       threads_abort_flag[tid] = false;
       return false;
@@ -364,7 +388,7 @@ bool rw_lock_table::is_deadlock_exist(uint64_t tid,
 
 
 bool rw_lock_table::unlock(uint64_t tid, uint64_t record_id,
-      std::vector<uint64_t> &cycle_member) {
+    std::vector<uint64_t> &cycle_member) {
   // 1. Is lock status RW_READER_LOCK or RW_WRITER_LOCK?
   if (table[record_id] == RW_READER_LOCK) {
     rd_unlock(tid, record_id, cycle_member);
@@ -466,8 +490,8 @@ bool rw_lock_table::rd_unlock(uint64_t tid, uint64_t record_id,
       pthread_cond_signal(&cond_var[follower->tid]);
 
       std::cout << "[tid: " << tid << ", record_id: " << record_id
-       << "] (rd_unlock) wake up thread "
-       << follower->tid << std::endl;
+        << "] (rd_unlock) wake up thread "
+        << follower->tid << std::endl;
 
     } else {
       assert(follower->current_phase == READ);
@@ -570,8 +594,8 @@ bool rw_lock_table::wr_unlock(uint64_t tid, uint64_t record_id) {
     pthread_cond_signal(&cond_var[follower->tid]);
 
     std::cout << "[tid: " << tid << ", record_id: " << record_id
-     << "] (wr_unlock) wake up thread "
-     << follower->tid << std::endl;
+      << "] (wr_unlock) wake up thread "
+      << follower->tid << std::endl;
 
 
 
@@ -588,7 +612,7 @@ bool rw_lock_table::wr_unlock(uint64_t tid, uint64_t record_id) {
         pthread_cond_signal(&cond_var[follower->tid]);
 
         std::cout << "[tid: " << tid << ", record_id: " << record_id
-        << "] (wr_unlock) wake up thread "
+          << "] (wr_unlock) wake up thread "
           << follower->tid << std::endl;
       }
     }
@@ -680,11 +704,11 @@ bool rw_lock_table::is_myself_deadlock_victim(uint64_t tid,
 }
 
 
-void rw_lock_table::clear_failed_rdlock(uint64_t tid, uint64_t record_id,
-    std::vector<uint64_t> &cycle_member) {
-  //TODO
-}
-void rw_lock_table::clear_failed_wrlock(uint64_t tid, uint64_t record_id,
-    std::vector<uint64_t> &cycle_member) {
-  //TODO
-}
+/* void rw_lock_table::clear_failed_rdlock(uint64_t tid, uint64_t record_id,
+ *     std::vector<uint64_t> &cycle_member) {
+ *   //TODO
+ * }
+ * void rw_lock_table::clear_failed_wrlock(uint64_t tid, uint64_t record_id,
+ *     std::vector<uint64_t> &cycle_member) {
+ *   //TODO
+ * } */

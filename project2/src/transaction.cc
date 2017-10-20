@@ -110,8 +110,7 @@ void rollback_second_write(log_t& log) {
   // Release locks.
   if (log.current_phase == SECOND_WRITE) {
     // Second write lock acquire fail.
-    
-    lock_table->clear_failed_wrlock(log.tid, log.k, *log.cycle_member);
+    // Do not try to unlcok second writer lock
   } else {
     lock_table->unlock(log.tid, log.k, *log.cycle_member);
   }
@@ -123,8 +122,7 @@ void rollback_first_write(log_t& log) {
   // Release locks.
   if (log.current_phase == FIRST_WRITE) {
     // First write lock acquire fail.
-    
-    lock_table->clear_failed_wrlock(log.tid, log.j, *log.cycle_member);
+    // Do not try to unlcok first writer lock
   } else {
     lock_table->unlock(log.tid, log.j, *log.cycle_member);
   }
@@ -136,8 +134,7 @@ void rollback_read(log_t& log) {
   // Release locks.
   if (log.current_phase == READ) {
     // Readlock acquire fail.
-    
-    lock_table->clear_failed_rdlock(log.tid, log.i, *log.cycle_member);
+    // Do not try to unlcok read lock
   } else {
     lock_table->unlock(log.tid, log.i, *log.cycle_member);
   }
@@ -147,28 +144,20 @@ void rollback(log_t& log) {
   switch (log.current_phase) {
     case COMMIT:
       rollback_commit(log);
-      rollback_second_write(log);
-      rollback_first_write(log);
-      rollback_read(log);
-      
-      break;
+
     case SECOND_WRITE:
       rollback_second_write(log);
-      rollback_first_write(log);
-      rollback_read(log);
 
-      break;
     case FIRST_WRITE:
       rollback_first_write(log);
-      rollback_read(log);
 
-      break;
     case READ:
       rollback_read(log);
 
       break;
     default:
       std::cout << "(rollback) Default case! Error!" << std::endl;
+      assert(false);
       exit(1);
   }
 }

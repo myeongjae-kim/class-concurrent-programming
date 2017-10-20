@@ -114,10 +114,12 @@ public:
    *     (find the threads that is waiting this transaction)
    * 3. Wakeup threads that is waiting this transaction.
    * ***/
-  void clear_failed_rdlock(uint64_t tid, uint64_t record_id,
-      std::vector<uint64_t> &cycle_member);
-  void clear_failed_wrlock(uint64_t tid, uint64_t record_id,
-      std::vector<uint64_t> &cycle_member);
+
+
+  /* void clear_failed_rdlock(uint64_t tid, uint64_t record_id,
+   *     std::vector<uint64_t> &cycle_member);
+   * void clear_failed_wrlock(uint64_t tid, uint64_t record_id,
+   *     std::vector<uint64_t> &cycle_member); */
 
 private:
   // It is an array of R elements
