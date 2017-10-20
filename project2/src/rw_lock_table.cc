@@ -678,3 +678,13 @@ bool rw_lock_table::is_myself_deadlock_victim(uint64_t tid,
 
   return false;
 }
+
+
+void rw_lock_table::clear_failed_rdlock(uint64_t tid, uint64_t record_id,
+    std::vector<uint64_t> &cycle_member) {
+  //TODO
+}
+void rw_lock_table::clear_failed_wrlock(uint64_t tid, uint64_t record_id,
+    std::vector<uint64_t> &cycle_member) {
+  //TODO
+}
