@@ -118,10 +118,15 @@ bool rw_lock_table::rdlock(uint64_t tid, uint64_t record_id,
       //    2-1-2. Do deadlock detection.
       if (is_myself_deadlock_victim(tid, cycle_member)) {
         // I am the victim of deadlock. return false.
-        // TODO: Clear queue and graph
+        // Clear queue and graph
 
         // I must be in the back of the queue.
         assert(record_wait_queues[record_id].rbegin()->tid == tid);
+
+        // Clear queue and graph
+        wait_for_graph->remove_edge(tid, ahead_writer_tid);
+        record_wait_queues->pop_back();
+
         return false;
       }
 
@@ -158,6 +163,187 @@ bool rw_lock_table::rdlock(uint64_t tid, uint64_t record_id,
         //
         // I could be in the middle of the queue or back of the queue.
 
+
+        // rdlock
+        // Case1. I am alone in the queue
+        //     1-1. Dequeue myself.
+        // Case2. I am the back of the queue
+        //     2-1. Check whether writer exists ahead of me.
+        //      2-1-1. A writer exists.
+        //        2-1-1-1. Remove edge from me to the writer.
+        //        2-1-1-2. Dequeue myself.
+        //      2-1-2. A writer does not exist.
+        //        2-1-2-1. Dequeue myself.
+        // Case3. I am the front of the queue
+        //     3-1. There must be a thread that is waiting me.
+        //     3-2. If the follower is writer.
+        //      3-2-1. Remove edge from the writer to me.
+        //      3-2-2. Wake the writer up.
+        //      3-2-3. Dequeue myself.
+        //     3-3. If the follower is reader.
+        //      3-3-1. Wake up all following reader until the writer is found.
+        //      3-3-2. Dequeue myself.
+        // Case4. I am a middle of the queue
+        //     4-1. Check whether writer exists ahead of me.
+        //      4-1-1. A writer exists.
+        //        4-1-1-1. Remove edge from me to the writer.
+        //        4-1-1-2. If a follower is writer.
+        //          4-1-1-2-1. Remove edge from the follower to me.
+        //          4-1-1-2-2. Add edge from the follower to ahead thread.
+        //        4-1-1-3. If a follower is reader.
+        //          4-1-1-2-2. Do nothing. The follower is not waiting me.
+        //        4-1-1-4. Dequeue myself.
+        //      4-1-2. A writer does not exist.
+        //        4-1-2-1. If a follower is writer.
+        //          4-1-2-1-1. Remove edge from the follower to me.
+        //          4-1-2-1-2. Add edge from the follower to ahead thread.
+        //        4-1-2-2. If a follower is reader.
+        //          4-1-1-2-2. Do nothing. The follower is not waiting me.
+        //        4-1-2-3. Dequeue myself.
+
+
+        // Precondtion: I exist in queue!
+        assert(record_wait_queues[record_id].size() != 0);
+
+        auto myself = record_wait_queues[record_id].begin();
+        while (myself != record_wait_queues[record_id].end()
+            && myself->tid != tid) {
+          myself++;
+        }
+
+        // Where am I?
+        assert(myself != record_wait_queues[record_id].end());
+
+        // Case1. I am alone in the queue
+        if (record_wait_queues[record_id].size() == 1) {
+          assert(record_wait_queues[record_id][0].tid == tid);
+          // 1-1. Dequeue myself.
+
+
+        // Case2. I am the back of the queue
+        } else if (myself == record_wait_queues[record_id].end() - 1) {
+          // 2-1. Check whether writer exists ahead of me.
+          
+          //  Writer ahead of me.
+          auto ahead_writer = record_wait_queues[record_id].rbegin() + 1;
+          // Search from the back of the queue.
+          // If a writer is found, break.
+          while (ahead_writer != record_wait_queues[record_id].rend()
+              && ahead_writer->current_phase == READ) {
+            ahead_writer++;
+          }
+          
+          //  2-1-1. A writer exists.
+          if (ahead_writer != record_wait_queues[record_id].rend()) {
+            assert(ahead_writer->current_phase != READ);
+
+            // 2-1-1-1. Remove edge from me to the writer.
+            wait_for_graph->remove_edge(tid, ahead_writer->tid);
+
+            // 2-1-1-2. Dequeue myself.
+            
+          // 2-1-2. A writer does not exist.
+          } else {
+            assert(ahead_writer == record_wait_queues[record_id].rend());
+          //  2-1-2-1. Dequeue myself.
+          }
+
+        // Case3. I am the front of the queue
+        } else if(myself == record_wait_queues[record_id].begin()){
+          // Front is me.
+          assert(record_wait_queues[record_id][0].tid == tid);
+
+          // 3-1. There must be a thread that is waiting me.
+          assert(record_wait_queues[record_id].size() >= 2);
+
+          auto follower = myself + 1;
+
+          // 3-2. If the follower is writer.
+          if (follower->current_phase != READ) {
+            //  3-2-1. Remove edge from the writer to me.
+            wait_for_graph->remove_edge(follower->tid, tid);
+
+            //  3-2-2. Wake the writer up.
+            pthread_cond_signal(&cond_var[follower->tid]);
+
+            //  3-2-3. Dequeue myself.
+
+          // 3-3. If the follower is reader.
+          } else {
+            assert(follower->current_phase == READ);
+            //  3-3-1. Wake up all following reader until the writer is found.
+
+            // at least one follower existence is guaranteed.
+            do {
+              // Wake up all the following reader
+              pthread_cond_signal(&cond_var[follower->tid]);
+              // go to next thread
+              follower++;
+            } while (follower != record_wait_queues[record_id].end()
+                && follower->current_phase == READ);
+
+
+            //  3-3-2. Dequeue myself.
+          }
+
+          // Case4. I am a middle of the queue
+        } else {
+          // size is at least 3
+          assert(record_wait_queues[record_id].size() >= 3);
+
+          // I am not end of the queue
+          assert(record_wait_queues[record_id].end() - 1 != myself);
+          // nor the begin of the queue.
+          assert(record_wait_queues[record_id].begin() != myself);
+
+
+
+          // 4-1. Check whether writer exists ahead of me.
+          auto ahead_writer = myself;
+          // Find writer
+          do {
+            ahead_writer--;
+          } while (ahead_writer->current_phase == READ
+              && ahead_writer != record_wait_queues[record_id].begin());
+
+          auto follower = myself + 1;
+          assert(follower != record_wait_queues[record_id].end());
+
+          // 4-1-1. A writer exists.
+          if (ahead_writer->current_phase != READ) {
+            // 4-1-1-1. Remove edge from me to the writer.
+            wait_for_graph->remove_edge(tid, ahead_writer->tid);
+
+            // 4-1-1-2. If a follower is writer.
+            if (follower->current_phase != READ) {
+              // 4-1-1-2-1. Remove edge from the follower to me.
+              wait_for_graph->remove_edge(follower->tid, tid);
+              // 4-1-1-2-2. Add edge from the follower to ahead thread.
+              wait_for_graph->add_edge(follower->tid, ahead_writer->tid);
+            } else {
+              // 4-1-1-3. If a follower is reader.
+              //   4-1-1-2-2. Do nothing. The follower is not waiting me.
+            }
+            // 4-1-1-2. Dequeue myself.
+
+
+            // 4-1-2. A writer does not exist.
+          } else {
+            // 4-1-2-1. If a follower is writer.
+            if (follower->current_phase != READ) {
+              //   4-1-2-1-1. Remove edge from the follower to me.
+              wait_for_graph->remove_edge(follower->tid, tid);
+              //   4-1-2-1-2. Add edge from the follower to ahead thread.
+              wait_for_graph->remove_edge(follower->tid, (myself + 1)->tid);
+            }
+            // 4-1-2-2. If a follower is reader.
+            //   4-1-1-2-2. Do nothing. The follower is not waiting me.
+            // 4-1-2-3. Dequeue myself.
+          }
+        }
+        // Finally, dequeue myself!
+        record_wait_queues[record_id].erase(myself);
+
         threads_abort_flag[tid] = false;
         return false;
       }
@@ -167,7 +353,7 @@ bool rw_lock_table::rdlock(uint64_t tid, uint64_t record_id,
       while(is_deadlock_exist(tid, cycle_member)) {
         pthread_yield();
       }
-      
+
       // assert(finally, deadlock is not exist!);
       assert(is_deadlock_exist(tid, cycle_member) == false);
 
@@ -277,10 +463,16 @@ bool rw_lock_table::wrlock(uint64_t tid, phase_t phase, uint64_t record_id,
     //    2-1-2. Do deadlock detection.
     if (is_myself_deadlock_victim(tid, cycle_member)) {
       // I am the victim of deadlock. return false.
-      // TODO: Clear queue and graph
+      // Clear queue and graph
 
       // I must be in the back of the queue.
       assert(record_wait_queues[record_id].rbegin()->tid == tid);
+
+
+      // Clear queue and graph
+      wait_for_graph->remove_edge(tid, ahead_rw_tid);
+      record_wait_queues->pop_back();
+
       return false;
     }
 
@@ -309,13 +501,148 @@ bool rw_lock_table::wrlock(uint64_t tid, phase_t phase, uint64_t record_id,
         << "] (rdlock) I am the victim of deadlock. Return false "
         << std::endl;
 
-      // TODO: Clear queue and graph
+      // Clear queue and graph
       // Add adge from follow thread to ahead thread
       // when follower thread is waiting me.
       //
       // Another deadlock can be occurred.
       //
       // I could be in the middle of the queue or back of the queue.
+
+
+      // Find me in the queue.
+
+      // Case1. I am alone in the queue
+      //     1-1. Dequeue myself.
+      // Case2. I am the back of the queue
+      //     2-1. There must be a thread I am waiting,
+      //         Remove edge from me to the thread.
+      //     2-2. Dequeue myself.
+      // Case3. I am the front of the queue
+      //     3-1. There must be a thread that is waiting me.
+      //     3-2. Remove edge from the thread to me,
+      //            wake it up, and dequeue myself.
+      // Case4. I am a middle of the queue
+      //        There must be a thread that I am waiting(ahead) and
+      //         is waiting me(follower).
+      //     4-1. Ahead == writer
+      //       4-1-1. Add edge from follower thread to ahead thread.
+      //       4-1-2. Remove edge from me to ahead thread.
+      //       4-1-3. Dequeue myself.
+      //     4-2. Ahead == reader
+      //       4-2-1. follower == writer
+      //         4-2-1-1. Add edge from follower thread to ahead thread.
+      //         4-2-1-2. Remove edge from me to ahead thread.
+      //         4-2-1-3. Dequeue myself.
+      //
+      //       4-2-2. follower == reader
+      //         4-2-2-1. Remove edge from me to ahead thread.
+      //         4-2-2-2. Wake up follower thread.
+      //         4-2-2-3. Dequeue myself.
+      //
+
+
+      // Precondtion: I exist in queue!
+      assert(record_wait_queues[record_id].size() != 0);
+
+      auto myself = record_wait_queues[record_id].begin();
+      while (myself != record_wait_queues[record_id].end()
+          && myself->tid != tid) {
+        myself++;
+      }
+
+      // Where am I?
+      assert(myself != record_wait_queues[record_id].end());
+
+      // Case1. I am alone in the queue
+      if (record_wait_queues[record_id].size() == 1) {
+          assert(record_wait_queues[record_id][0].tid == tid);
+          // 1-1. Dequeue myself.
+          
+      // Case2. I am the back of the queue
+      } else if(myself == record_wait_queues[record_id].end() - 1) {
+        // 2-1. There must be a thread I am waiting,
+        //     Remove edge from me to the thread.
+        assert(record_wait_queues[record_id].size() >= 2);
+        
+        // edge from me to the thread.
+        wait_for_graph->remove_edge(tid, (myself-1)->tid);
+
+        // 2-2. Dequeue myself.
+
+      // Case3. I am the front of the queue
+      } else if(myself == record_wait_queues[record_id].begin()) {
+        // 3-1. There must be a thread that is waiting me.
+        // 3-2. Remove edge from the thread to me,
+        assert(record_wait_queues[record_id].size() >= 2);
+        
+        // Remove edge from the thread to me,
+        auto follower = myself + 1;
+        wait_for_graph->remove_edge(follower->tid, tid);
+        // wake it up, and dequeue myself.
+        pthread_cond_signal(&cond_var[follower->tid]);
+
+
+      // Case4. I am a middle of the queue
+      } else {
+        // size is at least 3
+        assert(record_wait_queues[record_id].size() >= 3);
+
+        // I am not end of the queue
+        assert(record_wait_queues[record_id].end() - 1 != myself);
+        // nor the begin of the queue.
+        assert(record_wait_queues[record_id].begin() != myself);
+
+        // must be a thread that I am waiting(ahead) and
+        // waiting me(follower).
+        auto ahead = myself - 1;
+        auto follower = myself + 1;
+
+        // 4-1. Ahead == writer
+        if (ahead->current_phase != READ) {
+          //   4-1-1. Add edge from follower thread to ahead thread.
+          //   4-1-2. Remove edge from me to ahead thread.
+          //   4-1-3. Dequeue myself.
+
+
+          //  Add edge from follower thread to ahead thread.
+          wait_for_graph->add_edge(follower->tid, ahead->tid);
+          //  Remove edge from me to ahead thread.
+          wait_for_graph->remove_edge(tid, ahead->tid);
+
+          //   4-1-3. Dequeue myself.
+
+        // 4-2. Ahead == reader
+        } else {
+          assert(ahead->current_phase == READ);
+          //   4-2-1. follower == writer
+          if (follower->current_phase != READ) {
+            // 4-2-1-1. Add edge from follower thread to ahead thread.
+            // 4-2-1-2. Remove edge from me to ahead thread.
+            // 4-2-1-3. Dequeue myself.
+            
+            // Add edge from follower thread to ahead thread.
+            wait_for_graph->add_edge(follower->tid, ahead->tid);
+            // Remove edge from me to ahead thread.
+            wait_for_graph->remove_edge(tid, ahead->tid);
+            // Dequeue myself.
+            
+
+          // 4-2-2. follower == reader
+          } else {
+            assert(follower->current_phase == READ);
+            // 4-2-2-1. Remove edge from me to ahead thread.
+            // 4-2-2-2. Wake up follower thread.
+            // 4-2-2-3. Dequeue myself.
+            
+            // Remove edge from me to ahead thread.
+            wait_for_graph->remove_edge(tid, ahead->tid);
+            // Wake up follower thread.
+            pthread_cond_signal(&cond_var[follower->tid]);
+            // Dequeue myself.
+          }
+        }
+      }
 
       threads_abort_flag[tid] = false;
       return false;
