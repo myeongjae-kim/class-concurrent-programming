@@ -138,6 +138,7 @@ bool rw_lock_table::rdlock(uint64_t tid, uint64_t record_id,
         if (is_myself_deadlock_victim(tid, cycle_member)) {
           
           rdlock_clear_abort(tid, record_id);
+
           return false;
         }
 
@@ -165,6 +166,7 @@ bool rw_lock_table::rdlock(uint64_t tid, uint64_t record_id,
 
 
             rdlock_clear_abort(tid, record_id);
+            assert(wait_for_graph->get_cycle(tid).size() == 0);
             return false;
           }
 
@@ -318,6 +320,7 @@ bool rw_lock_table::wrlock(uint64_t tid, phase_t phase, uint64_t record_id,
         // Victim wakeup is occurred in 'is_myself_deadlock_victim'.
 
         wrlock_clear_abort(tid, record_id);
+
         return false;
       }
 
@@ -344,6 +347,7 @@ bool rw_lock_table::wrlock(uint64_t tid, phase_t phase, uint64_t record_id,
 
 
           wrlock_clear_abort(tid, record_id);
+
           return false;
         }
 
@@ -1132,6 +1136,9 @@ void rw_lock_table::wrlock_clear_abort(uint64_t tid,
     // 4-2. Remove edge from me to ahead thread.
     wait_for_graph->remove_edge(follower->tid, tid);
     wait_for_graph->remove_edge(tid, ahead->tid);
+
+    assert(ahead->tid != tid);
+    assert(follower->tid != tid);
 
 
     // 4-3. Ahead == writer
