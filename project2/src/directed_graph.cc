@@ -35,6 +35,8 @@ bool directed_graph::is_node_exist(uint64_t node_number) {
 }
 
 bool directed_graph::add_edge(uint64_t from, uint64_t to) {
+  assert(from != to);
+
   // check whether node is exist
   dest_and_count_t to_buf = {to, 1};
   if ( ! (is_node_exist(from) && is_node_exist(to)) ) {
@@ -63,6 +65,8 @@ bool directed_graph::add_edge(uint64_t from, uint64_t to) {
 }
 
 bool directed_graph::remove_edge(uint64_t from, uint64_t to) {
+  assert(from != to);
+
   dest_and_count_t to_buf = {to, 1};
   // check whether node is exist
   if ( ! (is_node_exist(from) && is_node_exist(to)) ) {
@@ -238,7 +242,7 @@ void directed_graph::print_cycle(std::vector<uint64_t> &search_result) {
 
   uint64_t result_size = search_result.size();
   for (uint64_t i = 1; i < result_size; ++i) {
-    std::cout << " -> " << search_result[i];
+    std::cout << " <- " << search_result[i];
   }
   std::cout << std::endl;
   std::cout << "(print_cycle) **     End     **" << std::endl;

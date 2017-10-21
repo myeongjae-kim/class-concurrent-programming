@@ -149,9 +149,14 @@ private:
       std::vector<uint64_t> &cycle_member);
   bool wr_unlock(uint64_t tid, uint64_t record_id);
 
-  uint64_t get_newest_tid(std::vector<uint64_t> &cycle_member);
+  uint64_t get_newest_tid(std::vector<uint64_t> cycle_member);
 
   bool is_myself_deadlock_victim(uint64_t tid, 
+      std::vector<uint64_t> &cycle_member);
+
+  void rdlock_clear_abort(uint64_t tid, uint64_t record_id,
+      std::vector<uint64_t> &cycle_member);
+  void wrlock_clear_abort(uint64_t tid, uint64_t record_id,
       std::vector<uint64_t> &cycle_member);
 };
 

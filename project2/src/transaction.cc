@@ -160,6 +160,9 @@ void rollback(log_t& log) {
       assert(false);
       exit(1);
   }
+
+  print_tid_record(log.tid, log.i);
+  std::cout << "(rollback) rollback is end. Go to next transaction" << std::endl;
 }
 
 void release_locks(log_t& log) {
@@ -199,11 +202,13 @@ void* transaction(void* arg) {
   uint64_t tid = uint64_t(arg);
 
   // record_id
-  uint64_t i, j, k;
 
   std::vector<uint64_t> cycle_member;
 
   while (1) {
+    std::cout << "(transaction) ** Start new transaction **"
+      << std::endl;
+
     // This is used to select which one is to be aborted.
     threads_timestamp[tid] = ++global_timestamp;
 
@@ -216,15 +221,15 @@ void* transaction(void* arg) {
     log.tid = tid;
 
     // get distinct record_ids
-    log.i = i = rand() % R;
+    log.i = rand() % R;
 
     do{
-      log.j = j = rand() % R;
-    }while (i == j);
+      log.j = rand() % R;
+    }while (log.i == log.j);
 
     do{
-      log.k = k = rand() % R;
-    }while (k == i || k == j);
+      log.k = rand() % R;
+    }while (log.k == log.i || log.k == log.j);
 
     // Phase1: READ
     log.current_phase = READ;
@@ -246,8 +251,9 @@ void* transaction(void* arg) {
       //
       // 3. Dequeue from graph
       // 4. Unlock (lock table status change)
-      
-      exit(1);
+
+      // exit(1);
+      pthread_mutex_unlock(&global_mutex);
       continue;
     }
     pthread_mutex_unlock(&global_mutex);
@@ -272,8 +278,9 @@ void* transaction(void* arg) {
       //
       // 3. Dequeue from graph
       // 4. Unlock (lock table status change)
-      
-      exit(1);
+
+      // exit(1);
+      pthread_mutex_unlock(&global_mutex);
       continue;
     }
     pthread_mutex_unlock(&global_mutex);
@@ -298,8 +305,9 @@ void* transaction(void* arg) {
       //
       // 3. Dequeue from graph
       // 4. Unlock (lock table status change)
-      
-      exit(1);
+
+      // exit(1);
+      pthread_mutex_unlock(&global_mutex);
       continue;
     }
     pthread_mutex_unlock(&global_mutex);
@@ -313,6 +321,10 @@ void* transaction(void* arg) {
 
     // Phase5: unlock
     release_locks(log);
+
+
+    std::cout << "(transaction) ** End of transaction **"
+      << std::endl;
   }
 
   return nullptr;
