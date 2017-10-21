@@ -206,6 +206,7 @@ void* transaction(void* arg) {
   std::vector<uint64_t> cycle_member;
 
   while (1) {
+    std::cout << "[tid: " << tid << "] ";
     std::cout << "(transaction) ** Start new transaction **"
       << std::endl;
 

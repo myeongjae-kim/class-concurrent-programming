@@ -55,6 +55,9 @@ bool directed_graph::add_edge(uint64_t from, uint64_t to) {
   if (iter != nodes[from].end()) {
     // edge is already exists.
     // increase count
+
+    //TODO : is this possible case?
+    assert(false);
     iter->count++;
   } else {
     // edge is not exist
@@ -100,6 +103,8 @@ bool directed_graph::remove_edge(uint64_t from, uint64_t to) {
     // edge is not exist
     std::cout << "(remove_edge) edge from " << from << " to "
       << to << " does not exist!"<< std::endl;
+    assert(false);
+
     return false;
   }
 }

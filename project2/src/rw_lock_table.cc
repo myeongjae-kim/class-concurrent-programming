@@ -158,8 +158,15 @@ bool rw_lock_table::rdlock(uint64_t tid, uint64_t record_id,
           std::cout << "My abort flag is on. Abort this transaction" << std::endl;
 
           threads_abort_flag[tid] = false;
-          rdlock_clear_abort(tid, record_id);
-          return false;
+
+          // Check again is there really deadlock.
+          // If a deadlock not exists, do not abort transaction.
+          if (is_deadlock_exist(tid, cycle_member)) {
+            rdlock_clear_abort(tid, record_id);
+            return false;
+          }
+
+          // Deadlock was removed. Keep going to acquire a lock.
         }
 
       }
@@ -328,8 +335,16 @@ bool rw_lock_table::wrlock(uint64_t tid, phase_t phase, uint64_t record_id,
         std::cout << "My abort flag is on. Abort this transaction" << std::endl;
 
         threads_abort_flag[tid] = false;
-        wrlock_clear_abort(tid, record_id);
-        return false;
+
+        // Check again is there really deadlock.
+        // If a deadlock not exists, do not abort transaction.
+        if (is_deadlock_exist(tid, cycle_member)) {
+          wrlock_clear_abort(tid, record_id);
+          return false;
+        }
+
+
+        // Deadlock was removed. Keep going to acquire lock.
       }
 
     }
@@ -541,14 +556,15 @@ bool rw_lock_table::rd_unlock(uint64_t tid, uint64_t record_id,
       if (is_myself_deadlock_victim(follower->tid, cycle_member)) {
         // If I am the deadlock victim,
         // I will release locks soon.
+        print_tid_record(tid, record_id);
         std::cout
-          << "\t(rd_unlock) I am a victim, I will release a lock soon."
+          << "\t(rd_unlock) New added edge makes deadlock."
+          << "Wake the follower up to be aborted"
           << std::endl;
 
-        std::cout
-          << "\t(rd_unlock) tid: " << tid << ", record_id: " << record_id
-          << std::endl;
-
+        print_tid_record(tid, record_id);
+        std::cout << "wake up thread " << follower->tid << std::endl;
+        pthread_cond_signal(&cond_var[follower->tid]);
       }
 
 
@@ -705,7 +721,7 @@ bool rw_lock_table::is_myself_deadlock_victim(uint64_t tid,
       threads_abort_flag[newest_tid] = true;
       pthread_cond_signal(&cond_var[newest_tid]);
 
-      std::cout << "[tid: " << tid << "] (wr_unlock) wake up a victim thread "
+      std::cout << "[tid: " << tid << "] (is_myself_deadlock_victim) wake up a victim thread "
         << newest_tid << std::endl;
 
       // TODO: When a victim is waken up, it executes clean up procedure
@@ -805,7 +821,7 @@ void rw_lock_table::rdlock_clear_abort(uint64_t tid, uint64_t record_id) {
   if (record_wait_queues[record_id].size() == 1) {
     assert(record_wait_queues[record_id][0].tid == tid);
     // 1-1. Dequeue myself.
-    
+
     print_tid_record(tid, record_id);
     std::cout << "(rdlock_clear_abort) Case1: I am alone in the queue." << std::endl;
 
@@ -879,23 +895,23 @@ void rw_lock_table::rdlock_clear_abort(uint64_t tid, uint64_t record_id) {
 
       print_tid_record(tid, record_id);
       std::cout << "(rdlock_clear_abort) Case3: I am the middle of the queue." << std::endl;
-/* 
- *       // at least one follower existence is guaranteed.
- *       do {
- *         // Wake up all the following reader
- *
- *         print_tid_record(tid, record_id);
- *         std::cout << "(rdlock_clear_abort) I am failed lock try."
- *           << "Waiting is removed so wake up thread "
- *           << follower->tid << std::endl;
- *
- *         pthread_cond_signal(&cond_var[follower->tid]);
- *         // go to next thread
- *         follower++;
- *       } while (follower != record_wait_queues[record_id].end()
- *           && follower->current_phase == READ);
- *
- *  */
+      /* 
+       *       // at least one follower existence is guaranteed.
+       *       do {
+       *         // Wake up all the following reader
+       *
+       *         print_tid_record(tid, record_id);
+       *         std::cout << "(rdlock_clear_abort) I am failed lock try."
+       *           << "Waiting is removed so wake up thread "
+       *           << follower->tid << std::endl;
+       *
+       *         pthread_cond_signal(&cond_var[follower->tid]);
+       *         // go to next thread
+       *         follower++;
+       *       } while (follower != record_wait_queues[record_id].end()
+       *           && follower->current_phase == READ);
+       *
+       *  */
       //  3-3-2. Dequeue myself.
     }
 
@@ -1184,7 +1200,7 @@ void rw_lock_table::wrlock_clear_abort(uint64_t tid,
           //              add edge from follower to the writer.
           print_tid_record(tid, record_id);
           std::cout << "ahead_writer is found. add edge from "
-            << "follower to ahead_writerr" << std::endl;
+            << "follower to ahead_writer" << std::endl;
           wait_for_graph->add_edge(follower->tid, ahead_writer->tid);
         }
 
