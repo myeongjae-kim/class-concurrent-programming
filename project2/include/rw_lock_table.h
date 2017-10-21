@@ -154,10 +154,11 @@ private:
   bool is_myself_deadlock_victim(uint64_t tid, 
       std::vector<uint64_t> &cycle_member);
 
-  void rdlock_clear_abort(uint64_t tid, uint64_t record_id,
-      std::vector<uint64_t> &cycle_member);
-  void wrlock_clear_abort(uint64_t tid, uint64_t record_id,
-      std::vector<uint64_t> &cycle_member);
+  void rdlock_clear_abort(uint64_t tid, uint64_t record_id);
+  void wrlock_clear_abort(uint64_t tid, uint64_t record_id);
+
+  uint64_t find_ahead_writer(uint64_t tid, uint64_t record_id);
+  uint64_t find_ahead_reader_or_writer(uint64_t tid, uint64_t record_id);
 };
 
 #endif

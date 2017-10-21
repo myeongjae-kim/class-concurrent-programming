@@ -1,0 +1,72 @@
+d: 6, record_id: 9] (rdlock) Go to sleep
+[tid: 5, record_id: 6] (wrlock) Good morning!
+[tid: 5, record_id: 6] first writer lock acquired
+[tid: 5, record_id: 8] second writer lock acquire try
+[tid: 5, record_id: 8] (wrlock) Go to sleep
+[tid: 3, record_id: 2] (wrlock) Good morning!
+[tid: 3, record_id: 2] second writer lock acquired
+[tid: 3, record_id: 7] reader lock release try
+[tid: 3, record_id: 7] (unlock) lock status is RW_READER_LOCK. rd_unlock() will be called.
+[tid: 3, record_id: 7] [tid: 3, record_id: 7] (rd_unlock) wake up thread 2
+[tid: 3, record_id: 7] reader lock released.
+[tid: 3, record_id: 5] first writer lock release try
+[tid: 3, record_id: 5] (unlock) lock status is RW_WRITER_LOCK. wr_unlock() will be called.
+[tid: 3, record_id: 5] first writer lock released.
+[tid: 3, record_id: 2] second writer lock release try
+[tid: 3, record_id: 2] (unlock) lock status is RW_WRITER_LOCK. wr_unlock() will be called.
+[tid: 3, record_id: 2] second writer lock released.
+(transaction) ** End of transaction **
+(transaction) ** Start new transaction **
+[tid: 3, record_id: 2] reader lock acquire try
+[tid: 3, record_id: 2] reader lock acquired
+[tid: 3, record_id: 7] first writer lock acquire try
+[tid: 3, record_id: 7] (wrlock) Go to sleep
+[tid: 9, record_id: 8] reader lock acquire try
+[tid: 9, record_id: 8] (rdlock) Go to sleep
+[tid: 2, record_id: 7] (wrlock) Good morning!
+[tid: 2, record_id: 7] first writer lock acquired
+[tid: 2, record_id: 9] second writer lock acquire try
+[tid: 2]      (is_myself_deadlock_victim) Deadlock found. The victim: 7
+[tid: 2] (wr_unlock) wake up a victim thread 7
+[tid: 2, record_id: 9] (wrlock) Go to sleep
+[tid: 7, record_id: 8] (wrlock) Good morning!
+[tid: 7, record_id: 8] My abort flag is on. Abort this transaction
+[tid: 7, record_id: 8] (rdlock) I am the victim of deadlock. Return false
+[tid: 7, record_id: 8] (second_write_record) the deadlock is found
+(print_cycle) ** No cycle found **
+[tid: 7, record_id: 8] (transaction) second_write_record() is fail. Abort this transaction.
+[tid: 7, record_id: 8] (transaction) phase:3
+[tid: 7, record_id: 8] (rollback_second_write) second write phase rollbacking
+[tid: 7, record_id: 3] (rollback_first_write) first write phase rollbacking
+[tid: 7, record_id: 3] (unlock) lock status is RW_WRITER_LOCK. wr_unlock() will be called.
+[tid: 7, record_id: 3] (wr_unlock) wake up thread 4
+[tid: 7, record_id: 9] (rollback_read) read phase rollbacking
+[tid: 7, record_id: 9] (unlock) lock status is RW_READER_LOCK. rd_unlock() will be called.
+[tid: 10]      (is_myself_deadlock_victim) Deadlock found. The victim: 6
+[tid: 10] (wr_unlock) wake up a victim thread 6
+[tid: 7, record_id: 9] (rollback) rollback is end. Go to next transaction
+(transaction) ** Start new transaction **
+[tid: 6, record_id: 9] (rdlock) Good morning!
+[tid: 6, record_id: 9] My abort flag is on. Abort this transaction
+[tid: 6, record_id: 9] (rdlock) I am the victim of deadlock. Return false
+[tid: 6, record_id: 9] (read_record) the deadlock is found
+(print_cycle) ** No cycle found **
+[tid: 6, record_id: 9] (transaction) read_record() is fail. Abort this transaction.
+[tid: 6, record_id: 9] (transaction) phase:1
+[tid: 6, record_id: 9] (rollback_read) read phase rollbacking
+[tid: 6, record_id: 9] (rollback) rollback is end. Go to next transaction
+[tid: 7, record_id: 5] reader lock acquire try
+[tid: 7, record_id: 5] reader lock acquired
+[tid: 7, record_id: 1] first writer lock acquire try
+[tid: 7, record_id: 1] (wrlock) Go to sleep
+(transaction) ** Start new transaction **
+[tid: 6, record_id: 4] reader lock acquire try
+[tid: 6, record_id: 4] reader lock acquired
+[tid: 6, record_id: 0] first writer lock acquire try
+[tid: 6, record_id: 0] first writer lock acquired
+[tid: 6, record_id: 7] second writer lock acquire try
+[tid: 6, record_id: 7] (wrlock) Go to sleep
+[tid: 4, record_id: 3] (rdlock) Good morning!
+[tid: 4, record_id: 3] reader lock acquired
+[tid: 4, record_id: 8] first writer lock acquire try
+[tid: 4, record_id: 8] (wrlock) Go to sleep
