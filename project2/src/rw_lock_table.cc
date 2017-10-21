@@ -162,6 +162,8 @@ bool rw_lock_table::rdlock(uint64_t tid, uint64_t record_id,
           // Check again is there really deadlock.
           // If a deadlock not exists, do not abort transaction.
           if (is_deadlock_exist(tid, cycle_member)) {
+
+
             rdlock_clear_abort(tid, record_id);
             return false;
           }
@@ -339,6 +341,8 @@ bool rw_lock_table::wrlock(uint64_t tid, phase_t phase, uint64_t record_id,
         // Check again is there really deadlock.
         // If a deadlock not exists, do not abort transaction.
         if (is_deadlock_exist(tid, cycle_member)) {
+
+
           wrlock_clear_abort(tid, record_id);
           return false;
         }

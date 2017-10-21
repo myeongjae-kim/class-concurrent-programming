@@ -1,4 +1,5 @@
 #include <cstring>
+#include <fstream>
 
 #include "main.h"
 #include "rw_lock_table.h"
@@ -18,6 +19,12 @@ extern uint64_t global_timestamp;
 // Lock
 extern pthread_mutex_t global_mutex;
 extern rw_lock_table *lock_table;
+
+
+
+// end condition
+extern uint64_t global_execution_order;
+extern int64_t *records;
 
 void print_tid_record(uint64_t tid, uint64_t record_id) {
   std::cout << "[tid: " << tid << ", record_id: " << record_id << "] ";
@@ -101,6 +108,8 @@ void rollback_commit(log_t& log) {
   // Release locks.
   // We don't need to prepare unlocking locks.
   // All locks are acquired correctly.
+
+  records[log.k] += log.value_of_i;
 }
 
 void rollback_second_write(log_t& log) {
@@ -114,6 +123,8 @@ void rollback_second_write(log_t& log) {
   } else {
     lock_table->unlock(log.tid, log.k, *log.cycle_member);
   }
+
+  records[log.j] -= (log.value_of_i + 1);
 }
 void rollback_first_write(log_t& log) {
   print_tid_record(log.tid, log.j);
@@ -165,9 +176,9 @@ void rollback(log_t& log) {
   std::cout << "(rollback) rollback is end. Go to next transaction" << std::endl;
 }
 
+// This function is used in global mutex
 void release_locks(log_t& log) {
   // Release reader lock.
-  pthread_mutex_lock(&global_mutex);
   print_tid_record(log.tid, log.i);
   std::cout << "reader lock release try" << std::endl;
 
@@ -193,19 +204,20 @@ void release_locks(log_t& log) {
 
   print_tid_record(log.tid, log.k);
   std::cout << "second writer lock released." << std::endl;
-
-  pthread_mutex_unlock(&global_mutex);
 }
 
 
 void* transaction(void* arg) {
+  // record_id
   uint64_t tid = uint64_t(arg);
 
-  // record_id
+  // make file
+  std::string file_name = "thread" + std::to_string(tid) + ".txt";
+  std::ofstream log_file(file_name);
 
   std::vector<uint64_t> cycle_member;
 
-  while (1) {
+  while (global_execution_order <= E) {
     std::cout << "[tid: " << tid << "] ";
     std::cout << "(transaction) ** Start new transaction **"
       << std::endl;
@@ -255,9 +267,15 @@ void* transaction(void* arg) {
 
       // exit(1);
       pthread_mutex_unlock(&global_mutex);
+      pthread_yield();
       continue;
     }
     pthread_mutex_unlock(&global_mutex);
+
+
+    // Read i
+    log.value_of_i = records[log.i];
+
 
     // Phase2: FIRST_WRITE
     log.current_phase = FIRST_WRITE;
@@ -282,9 +300,13 @@ void* transaction(void* arg) {
 
       // exit(1);
       pthread_mutex_unlock(&global_mutex);
+      pthread_yield();
       continue;
     }
     pthread_mutex_unlock(&global_mutex);
+
+    // Write j
+    log.value_of_j = records[log.j] += log.value_of_i + 1;
 
     // Phase3: SECOND_WRITE
     log.current_phase = SECOND_WRITE;
@@ -309,24 +331,56 @@ void* transaction(void* arg) {
 
       // exit(1);
       pthread_mutex_unlock(&global_mutex);
+      pthread_yield();
       continue;
     }
     pthread_mutex_unlock(&global_mutex);
 
+
+    // write k
+    log.value_of_k = records[log.k] -= log.value_of_i;
+
+
     // Phase4: COMMIT
     log.current_phase = COMMIT;
 
+    pthread_mutex_lock(&global_mutex);
+
+
+    log.commit_id = ++global_execution_order;
+
     // If commit is fail (When commid > E)
     // do rollback and destory thread.
-    commit(log);
+    if (log.commit_id > E) {
+      rollback(log);
 
-    // Phase5: unlock
+      pthread_mutex_unlock(&global_mutex);
+      break;
+    }
+
     release_locks(log);
 
+    // commit(log);
+
+    log_file << log.commit_id << " " << log.i << " " << log.j << " " << log.k << " "
+      << log.value_of_i << " " << log.value_of_j << " " << log.value_of_k << std::endl;
+
+
+
+    // Phase5: unlock
+
+    pthread_mutex_unlock(&global_mutex);
 
     std::cout << "(transaction) ** End of transaction **"
       << std::endl;
   }
+
+
+  std::cout << "[tid:" << tid << "] "  << "(transaction) The end of transaction. It will be terminated." << std::endl;
+  std::cout << "[tid:" << tid << "] "  << "(transaction) global_execution_order: " << global_execution_order << std::endl;
+
+
+  log_file.close();
 
   return nullptr;
 }
