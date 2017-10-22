@@ -256,18 +256,41 @@ bool rw_lock_table::wrlock(uint64_t tid, phase_t phase, uint64_t record_id,
     // find a thread that is in front of me.
 
     //TODO
-    uint64_t ahead_rw_tid = find_ahead_reader_or_writer(tid, record_id);
 
-    // tid should not be zero
-    assert(ahead_rw_tid != 0);
+    // Find myself.
+    // add_edge until ahead thread is reader.
+    //
+    // Check deadlock.
+    // If deadlock occurred, remove edges and abort myself
 
-    // Add edge to wait_for graph.
-    wait_for_graph->add_edge(tid, ahead_rw_tid);
+    auto myself = record_wait_queues[record_id].end() - 1;
+    assert(myself->tid == tid);
+
+    auto ahead = myself;
+    bool ahead_is_reader = (ahead - 1)->current_phase == READ;
+
+    // If right ahead is writer, just one edge is added.
+    // Else, add edge to every ahead reader.
+    // Do not add edge when a writer is found.
+    if (ahead_is_reader) {
+      // right ahead is reader 
+      do {
+        ahead--;
+        wait_for_graph->add_edge(tid, ahead->tid);
+      } while(
+          ahead != record_wait_queues[record_id].begin()
+          && (ahead - 1)->current_phase == READ
+          );
+    } else {
+      // ahead is writer
+      ahead--;
+      wait_for_graph->add_edge(tid, ahead->tid);
+    }
+
 
     // 2-1-2-3. If I am the vicitm, clear queue, graph and return false.
     // 2-1-2-3. If I am not, wake the victim up and sleep.
     if (is_deadlock_exist(tid, cycle_member)){
-      // Victim wakeup is occurred in 'is_myself_deadlock_victim'.
 
       wrlock_clear_abort(tid, record_id);
 
@@ -495,6 +518,19 @@ bool rw_lock_table::rd_unlock(uint64_t tid, uint64_t record_id,
       assert(follower->current_phase == READ);
       //  2-1-1-2-3. If a reader follows, do not change lock status, and
       //            dequeue myself.
+      //
+      
+      // Find writer and remove edge
+      do{
+        follower++;
+      }while(follower != record_wait_queues[record_id].end()
+          && follower->current_phase == READ);
+
+      if (follower != record_wait_queues[record_id].end()) {
+        assert(follower->current_phase != READ);
+        wait_for_graph->remove_edge(follower->tid, tid);
+      }
+      
     }
   } else {
     // 2-1-1-3. Case2. I am not the top of a queue.
@@ -521,26 +557,8 @@ bool rw_lock_table::rd_unlock(uint64_t tid, uint64_t record_id,
 
       // Remove an edge from the writer to me,
       wait_for_graph->remove_edge(follower->tid, tid);
-      // Add an edge from the writer to ahead reader
-      wait_for_graph->add_edge(follower->tid, (iter - 1)->tid);
       // There is no need to wake a writer up
       // because at least one reader exists in front of a writer.
-
-      // Deadlock Detection!!
-      if (is_myself_deadlock_victim(follower->tid, cycle_member)) {
-        // If I am the deadlock victim,
-        // I will release locks soon.
-        print_tid_record(tid, record_id);
-        std::cout
-          << "\t(rd_unlock) New added edge makes deadlock."
-          << "Wake the follower up to be aborted"
-          << std::endl;
-
-        print_tid_record(tid, record_id);
-        std::cout << "wake up thread " << follower->tid << std::endl;
-        pthread_cond_signal(&cond_var[follower->tid]);
-      }
-
 
       // Dequeue myself.
     } else {
@@ -549,6 +567,19 @@ bool rw_lock_table::rd_unlock(uint64_t tid, uint64_t record_id,
       // dequeue myself.
       //
       //  Do not change lock status. It is still RW_READER_LOCK
+
+
+      // Find writer and remove edge
+      do{
+        follower++;
+      }while(follower != record_wait_queues[record_id].end()
+          && follower->current_phase == READ);
+
+      if (follower != record_wait_queues[record_id].end()) {
+        assert(follower->current_phase != READ);
+        wait_for_graph->remove_edge(follower->tid, tid);
+      }
+
     }
   }
 
@@ -1032,12 +1063,14 @@ void rw_lock_table::wrlock_clear_abort(uint64_t tid,
 
 
 
+  auto myself = record_wait_queues[record_id].end() - 1;
+  assert(myself->tid == tid);
 
-  auto myself = record_wait_queues[record_id].begin();
-  while (myself != record_wait_queues[record_id].end()
-      && myself->tid != tid) {
-    myself++;
-  }
+  /* auto myself = record_wait_queues[record_id].begin();
+   * while (myself != record_wait_queues[record_id].end()
+   *     && myself->tid != tid) {
+   *   myself++;
+   * } */
 
   // Where am I?
   assert(myself != record_wait_queues[record_id].end());
@@ -1060,7 +1093,24 @@ void rw_lock_table::wrlock_clear_abort(uint64_t tid,
     std::cout << "(wrlock_clear_abort) Case2: I am the back of the queue." << std::endl;
 
     // edge from me to the thread.
-    wait_for_graph->remove_edge(tid, (myself-1)->tid);
+    auto ahead = myself;
+
+    if ( (ahead - 1) ->current_phase == READ) {
+      //ahead is reader
+      do {
+        ahead--;
+        wait_for_graph->remove_edge(tid, ahead->tid);
+      } while (
+          ahead != record_wait_queues[record_id].begin()
+          && (ahead - 1)->current_phase == READ
+          );
+
+    } else {
+      //ahead is writer
+      ahead--;
+      wait_for_graph->remove_edge(tid, ahead->tid);
+    }
+
 
     // 2-2. Dequeue myself.
 
