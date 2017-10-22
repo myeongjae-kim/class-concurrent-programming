@@ -8,3 +8,6 @@ rn
 .clang_complete
 thread*.txt
 log
+old
+src_test
+temp
