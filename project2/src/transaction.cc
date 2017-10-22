@@ -154,7 +154,7 @@ void rollback_second_write(log_t& log) {
     // Second write lock acquire fail.
     // Do not try to unlcok second writer lock
   } else {
-    lock_table->unlock(log.tid, log.k, *log.cycle_member);
+    lock_table->unlock(log.tid, log.k);
   }
 
   records[log.j] -= (log.value_of_i + 1);
@@ -174,7 +174,7 @@ void rollback_first_write(const log_t& log) {
     // First write lock acquire fail.
     // Do not try to unlcok first writer lock
   } else {
-    lock_table->unlock(log.tid, log.j, *log.cycle_member);
+    lock_table->unlock(log.tid, log.j);
   }
 }
 void rollback_read(const log_t& log) {
@@ -188,7 +188,7 @@ void rollback_read(const log_t& log) {
     // Readlock acquire fail.
     // Do not try to unlcok read lock
   } else {
-    lock_table->unlock(log.tid, log.i, *log.cycle_member);
+    lock_table->unlock(log.tid, log.i);
   }
 }
 
@@ -229,7 +229,7 @@ void release_locks(const log_t& log) {
   std::cout << "reader lock release try" << std::endl;
 #endif
 
-  lock_table->unlock(log.tid, log.i, *log.cycle_member);
+  lock_table->unlock(log.tid, log.i);
 
 #ifdef DBG
   print_tid_record(log.tid, log.i);
@@ -242,7 +242,7 @@ void release_locks(const log_t& log) {
   std::cout << "first writer lock release try " << std::endl;
 #endif
 
-  lock_table->unlock(log.tid, log.j, *log.cycle_member);
+  lock_table->unlock(log.tid, log.j);
 
 #ifdef DBG
   print_tid_record(log.tid, log.j);
@@ -255,7 +255,7 @@ void release_locks(const log_t& log) {
   std::cout << "second writer lock release try " << std::endl;
 #endif
 
-  lock_table->unlock(log.tid, log.k, *log.cycle_member);
+  lock_table->unlock(log.tid, log.k);
 
 #ifdef DBG
   print_tid_record(log.tid, log.k);

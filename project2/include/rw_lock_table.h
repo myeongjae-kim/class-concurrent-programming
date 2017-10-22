@@ -56,8 +56,7 @@ public:
 
 
   // Detailed comment of this function is in rw_lock_table.cc
-  bool unlock(uint64_t tid, uint64_t record_id,
-      std::vector<uint64_t> &cycle_member);
+  bool unlock(uint64_t tid, uint64_t record_id);
 
   // It is just a wrapper of wait_for_graph->print_cycle;
   void print_deadlock(std::vector<uint64_t> &cycle_member);
@@ -83,8 +82,7 @@ private:
   bool is_deadlock_exist(uint64_t tid, std::vector<uint64_t>& cycle_member);
 
   // Subfunctions of unlock();
-  bool rd_unlock(uint64_t tid, uint64_t record_id,
-      std::vector<uint64_t> &cycle_member);
+  bool rd_unlock(uint64_t tid, uint64_t record_id);
   bool wr_unlock(uint64_t tid, uint64_t record_id);
 
   // Abort functions

@@ -280,8 +280,7 @@ bool rw_lock_table::is_deadlock_exist(uint64_t tid,
 
 
 
-bool rw_lock_table::unlock(uint64_t tid, uint64_t record_id,
-    std::vector<uint64_t> &cycle_member) {
+bool rw_lock_table::unlock(uint64_t tid, uint64_t record_id) {
   // 1. Is lock status RW_READER_LOCK or RW_WRITER_LOCK?
   if (table[record_id] == RW_READER_LOCK) {
 
@@ -291,7 +290,7 @@ bool rw_lock_table::unlock(uint64_t tid, uint64_t record_id,
       << "rd_unlock() will be called."<< std::endl;
 #endif
 
-    rd_unlock(tid, record_id, cycle_member);
+    rd_unlock(tid, record_id);
   } else if (table[record_id] == RW_WRITER_LOCK) { 
 
 #ifdef DBG
@@ -311,8 +310,7 @@ bool rw_lock_table::unlock(uint64_t tid, uint64_t record_id,
 }
 
 
-bool rw_lock_table::rd_unlock(uint64_t tid, uint64_t record_id,
-    std::vector<uint64_t> &cycle_member) {
+bool rw_lock_table::rd_unlock(uint64_t tid, uint64_t record_id) {
   // 2-1. RW_READER_LOCK.
   //   2-1-1. Find my location.
   //    2-1-1-1. If any writer is exist in front of me, it is an error.
