@@ -15,6 +15,8 @@
 
 #include <pthread.h>
 
+// #include <unistd.h>
+
 #include "main.h"
 #include "rw_lock_table.h"
 #include "transaction.h"
@@ -96,7 +98,6 @@ int main(const int argc, const char * const argv[])
 
   initialize_global_variables();
   srand(time(NULL));
-
 
   // tid starts from one.
   for (uint64_t i = 1; i < N; i++) {
@@ -313,4 +314,3 @@ void deallocate_global_variables() {
  *
  *   return nullptr;
  * } */
-

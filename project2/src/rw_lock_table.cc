@@ -598,7 +598,7 @@ bool rw_lock_table::wr_unlock(uint64_t tid, uint64_t record_id) {
   //   2-2-2. If any reader or writer follows me, remove edge from it to me
   //         , wake it up, and dequeue myself.
   //         Change lock status to RW_UNLOCK
-  //   2-2-2. If I am alone, just dequeue myself.
+  //   2-2-3. If I am alone, just dequeue myself.
   //         Change lock status to RW_UNLOCK
 
 
