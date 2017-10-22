@@ -48,6 +48,7 @@ rw_lock_table::~rw_lock_table() {
   free(table);
 }
 
+
 // Return true when acquiring is successful.
 // Return false when a deadlock exists.
 // More information is in rw_lock_table.h
@@ -347,9 +348,6 @@ bool rw_lock_table::wrlock(uint64_t tid, phase_t phase, uint64_t record_id,
 }
 
 
-
-
-
 //  This function finds deadlock. If deadlock is found, it returns true
 // and deadlock members' tid is inserted to cycle_member
 //
@@ -521,26 +519,6 @@ bool rw_lock_table::rd_unlock(uint64_t tid, uint64_t record_id,
 
       // Remove an edge from the writer to me,
       wait_for_graph->remove_edge(follower->tid, tid);
-      // Add an edge from the writer to ahead reader
-      wait_for_graph->add_edge(follower->tid, (iter - 1)->tid);
-      // There is no need to wake a writer up
-      // because at least one reader exists in front of a writer.
-
-      // Deadlock Detection!!
-      if (is_myself_deadlock_victim(follower->tid, cycle_member)) {
-        // If I am the deadlock victim,
-        // I will release locks soon.
-        print_tid_record(tid, record_id);
-        std::cout
-          << "\t(rd_unlock) New added edge makes deadlock."
-          << "Wake the follower up to be aborted"
-          << std::endl;
-
-        print_tid_record(tid, record_id);
-        std::cout << "wake up thread " << follower->tid << std::endl;
-        pthread_cond_signal(&cond_var[follower->tid]);
-      }
-
 
       // Dequeue myself.
     } else {
@@ -668,6 +646,9 @@ bool rw_lock_table::is_myself_deadlock_victim(uint64_t tid,
     // Find the newest thread and turn its abort flag on.
 
     newest_tid = get_newest_tid(cycle_member);
+    
+    // It is me. Newest shoudl be me.
+    assert(newest_tid == tid);
 
     std::cout << "[tid: " << tid << "]\
       (is_myself_deadlock_victim) Deadlock found. The victim: " << newest_tid << std::endl;
@@ -833,8 +814,6 @@ void rw_lock_table::rdlock_clear_abort(uint64_t tid, uint64_t record_id) {
 
     // Case3. I am the front of the queue
   } else if(myself == record_wait_queues[record_id].begin()){
-
-
 
     // TODO: remove case
     assert(false);
@@ -1067,10 +1046,8 @@ void rw_lock_table::wrlock_clear_abort(uint64_t tid,
     // Case3. I am the front of the queue
   } else if(myself == record_wait_queues[record_id].begin()) {
 
-
     // TODO: remove case
     assert(false);
-
 
 
 
@@ -1100,7 +1077,6 @@ void rw_lock_table::wrlock_clear_abort(uint64_t tid,
 
     // Case4. I am a middle of the queue
   } else {
-
 
     // TODO: remove case
     assert(false);
