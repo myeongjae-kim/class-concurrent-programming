@@ -15,8 +15,6 @@
 
 #include <pthread.h>
 
-// #include <unistd.h>
-
 #include "main.h"
 #include "rw_lock_table.h"
 #include "transaction.h"
@@ -56,13 +54,8 @@ uint64_t global_execution_order = 0;
 
 pthread_mutex_t global_mutex = PTHREAD_MUTEX_INITIALIZER;
 
-//TODO: commit and rollback implementation. how??
-
-
 void initialize_global_variables();
 void deallocate_global_variables();
-void rw_lock_table_test();
-
 
 int main(const int argc, const char * const argv[])
 {
@@ -161,156 +154,3 @@ void deallocate_global_variables() {
   }
   free(cond_var);
 }
-
-
-
-
-/* Below are transaction samples
- * Only transacion related codes are exist below. */
-
-/* void read_record(log_t &log) {
- *   std::cout << "[tid: " << log.tid << ", record_id: " << log.i << "] ";
- *   std::cout << "reader lock acquire try"<< std::endl;
- *
- *   if(lock_table->rdlock(log.tid, log.i, &global_mutex, *log.cycle_member) == false) {
- *     //deadlock found
- *     std::cout << "[tid: " << log.tid << ", record_id: " << log.i << "] ";
- *     std::cout << "(read_record) the deadlock is found" << std::endl;
- *     lock_table->print_deadlock(*log.cycle_member);
- *
- *     exit(1);
- *   }
- *
- *   std::cout << "[tid: " << log.tid << ", record_id: " << log.i << "] ";
- *   std::cout << "reader lock acquired" << std::endl;
- * }
- *
- * void first_write_record(log_t &log) {
- *   std::cout << "[tid: " << log.tid << ", record_id: " << log.j << "] ";
- *   std::cout << "first writer lock acquire try" << std::endl;
- *
- *   if(lock_table->wrlock(log.tid, FIRST_WRITE, log.j, &global_mutex,
- *         *log.cycle_member)
- *       == false) {
- *     //deadlock found
- *     std::cout << "[tid: " << log.tid << ", record_id: " << log.j << "] ";
- *     std::cout <<"(first_write_record) the deadlock is found" << std::endl;
- *     lock_table->print_deadlock(*log.cycle_member);
- *     exit(1);
- *   }
- *
- *   std::cout << "[tid: " << log.tid << ", record_id: " << log.j << "] ";
- *   std::cout << "first writer lock acquired" << std::endl;
- *
- * }
- *
- * void second_write_record(log_t &log) {
- *   std::cout << "[tid: " << log.tid << ", record_id: " << log.k << "] ";
- *   std::cout << "second writer lock acquire try" << std::endl;
- *
- *   if(lock_table->wrlock(log.tid, SECOND_WRITE, log.k, &global_mutex,
- *         *log.cycle_member)
- *       == false){
- *     //deadlock found
- *     std::cout << "[tid: " << log.tid << ", record_id: " << log.k << "] ";
- *     std::cout << "(second_write_record) the deadlock is found" << std::endl;
- *     lock_table->print_deadlock(*log.cycle_member);
- *     exit(1);
- *   }
- *
- *   std::cout << "[tid: " << log.tid << ", record_id: " << log.k << "] ";
- *   std::cout << "second writer lock acquired" << std::endl;
- *
- * }
- *
- * void commit() {
- *
- * }
- *
- * void* transaction_sample(void* arg) {
- *   uint64_t tid = uint64_t(arg);
- *
- *   uint64_t i, j, k;
- *
- *   std::vector<uint64_t> cycle_member;
- *
- *   while(1) {
- *     // This is used to select which one is to be aborted.
- *     threads_timestamp[tid] = ++global_timestamp;
- *
- *     // log
- *     log_t log;
- *     memset(&log, 0, sizeof(log_t));
- *     log.cycle_member = &cycle_member;
- *
- *     log.tid = tid;
- *     log.i = i = rand() % R;
- *
- *     do{
- *       log.j = j = rand() % R;
- *     }while (i == j);
- *
- *     do{
- *       log.k = k = rand() % R;
- *     }while (k == i || k == j);
- *
- *
- *     pthread_mutex_lock(&global_mutex);
- *     read_record(log);
- *     pthread_mutex_unlock(&global_mutex);
- *
- *     for (int i = 0; i < 10; ++i) {
- *       pthread_yield();
- *       // do something
- *     }
- *
- *     pthread_mutex_lock(&global_mutex);
- *     first_write_record(log);
- *     pthread_mutex_unlock(&global_mutex);
- *
- *     for (int i = 0; i < 10; ++i) {
- *       pthread_yield();
- *       // do something
- *     }
- *
- *     pthread_mutex_lock(&global_mutex);
- *     second_write_record(log);
- *     pthread_mutex_unlock(&global_mutex);
- *
- *     for (int i = 0; i < 10; ++i) {
- *       pthread_yield();
- *       // do something
- *     }
- *
- *     commit();
- *
- *     pthread_mutex_lock(&global_mutex);
- *     std::cout << "[tid: " << tid << ", record_id: " << i << "] ";
- *     std::cout << "reader lock release try" << std::endl;
- *
- *     lock_table->unlock(tid, i, cycle_member);
- *
- *     std::cout << "[tid: " << tid << ", record_id: " << i << "] ";
- *     std::cout << "reader lock released." << std::endl;
- *
- *     std::cout << "[tid: " << tid << ", record_id: " << j << "] ";
- *     std::cout << "first writer lock release try " << std::endl;
- *
- *     lock_table->unlock(tid, j, cycle_member);
- *
- *     std::cout << "[tid: " << tid << ", record_id: " << j << "] ";
- *     std::cout << "first writer lock released." << std::endl;
- *
- *     std::cout << "[tid: " << tid << ", record_id: " << k << "] ";
- *     std::cout << "second writer lock release try " << std::endl;
- *
- *     lock_table->unlock(tid, k, cycle_member);
- *
- *     std::cout << "[tid: " << tid << ", record_id: " << k << "] ";
- *     std::cout << "second writer lock released." << std::endl;
- *
- *     pthread_mutex_unlock(&global_mutex);
- *   }
- *
- *   return nullptr;
- * } */

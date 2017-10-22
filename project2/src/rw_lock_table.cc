@@ -57,12 +57,10 @@ bool rw_lock_table::rdlock(uint64_t tid, uint64_t record_id,
   // 2. Check whether waiting is needed or not (Writer exist?)
   //  2-1. Waiting
   //    2-1-1. Add edge to wait_for graph.
-  //    2-1-2. Iterate until there is no writer ahead of me.
-  //      2-1-2-1. If I there is no writer ahead of me, break.
-  //      2-1-2-2. If I should wait, do deadlock detection.
-  //        2-1-2-3. If I am the vicitm, clear queue, graph and return false.
-  //        2-1-2-3. If I am not, wake the victim up and sleep.
-  //        2-1-2-4. Wake up! Check deadlock again.
+  //    2-1-2. Check whether deadlock is made or not.
+  //      2-1-2-1. If deadlock is occurred, abort this locking process.
+  //      2-1-2-2. If not, keep going to get a lock.
+  //    2-1-2. Sleep until there is no writer ahead of me.
   //  2-2. Go to get a lock
   //  2-3. Write status to lock table and increase readers_count
 
@@ -73,7 +71,7 @@ bool rw_lock_table::rdlock(uint64_t tid, uint64_t record_id,
 
 
   // 2. Check whether waiting is needed or not.
-  //
+  
   // If record_wait_queues[record_id] has one element,
   // Go to get a lock
   if (record_wait_queues[record_id].size() == 1) {
@@ -89,84 +87,41 @@ bool rw_lock_table::rdlock(uint64_t tid, uint64_t record_id,
     // The # of queue elements should be at least 2.
     assert(record_wait_queues[record_id].size() > 1);
 
-    // Check whether a writer is exists.
+    // Check whether a writer exists.
     uint64_t ahead_writer_tid = find_ahead_writer(tid, record_id);
 
     // If ahead_writer_tid == 0, there is no writer in front of this thread.
     if (ahead_writer_tid != 0) {
       //  2-1. Waiting
       //    2-1-1. Add edge to wait_for graph.
-      //    2-1-2. Iterate until there is no writer ahead of me.
-      //      2-1-2-1. If I there is no writer ahead of me, break.
-      //      2-1-2-2. Do deadlock detection.
-      //        2-1-2-3. If I am the vicitm, clear queue, graph and return false.
-      //        2-1-2-3. If I am not, wake the victim up and sleep.
-      //        2-1-2-4. Wake up! Check deadlock again.
-      //                If my abort flag is on, abort this transaction.
+      //    2-1-2. Check whether deadlock is made or not.
+      //      2-1-2-1. If deadlock is occurred, abort this locking process.
+      //      2-1-2-2. If not, keep going to get a lock.
+      //    2-1-2. Sleep until there is no writer ahead of me.
 
       //    2-1-1. Add edge to wait_for graph.
       wait_for_graph->add_edge(tid, ahead_writer_tid);
 
 
-      // 2-1-2-3. If I am the vicitm, clear queue, graph and return false.
-      // 2-1-2-3. If I am not, wake the victim up and sleep.
-      // Victim wakeup is occurred in 'is_myself_deadlock_victim'.
+      // 2-1-2. Check whether deadlock is made or not.
       if (is_deadlock_exist(tid, cycle_member)) {
-
+        // 2-1-2-1. If deadlock is occurred, abort this locking process.
         rdlock_clear_abort(tid, record_id);
-
         return false;
       }
 
-
-
-
-      // TODO: below can be implemented as a do while function.
-      while ( find_ahead_writer(tid, record_id) ) {
-        //    2-1-2. Iterate until there is no writer ahead of me.
-        //      2-1-2-1. If I am the top of a queue, break.
-        //      2-1-2-2. Do deadlock detection.
-        //        2-1-2-3. If I am the vicitm, clear queue, graph and return false.
-        //        2-1-2-3. If I am not, wake the victim up and sleep.
-        //        2-1-2-4. Wake up! Check deadlock again.
-        //                If my abort flag is on, abort this transaction.
-
-
-        //      2-1-2-1. If I am the top of a queue, break.
-        if (record_wait_queues[record_id].begin()->tid == tid) {
-          //TODO: This case can be ommitted.
-          //Is this possible? ahead_writer is found but I am begin of the queue?
-
-          // below assert is just detecting this case happen
-          assert(false);
-          break;
-        }
-
-        // 2-1-2-2. Do deadlock detection.
-
-
-
-
+      // 2-1-2-2. If not, keep going to get a lock.
+      do {
         std::cout << "[tid: " << tid << ", record_id: " << record_id
           << "] (rdlock) Go to sleep" << std::endl;
 
+        //2-1-2. Sleep until there is no writer ahead of me.
         pthread_cond_wait(&cond_var[tid], global_mutex);
 
         // 2-1-2-4. Wake up! Check deadlock again.
         std::cout << "[tid: " << tid << ", record_id: " << record_id
           << "] (rdlock) Good morning!" << std::endl;
-      }
-
-
-      // assert(finally, deadlock is not exist!);
-      // assert(is_deadlock_exist(tid, cycle_member) == false);
-
-      // 2-1-5. Waken up! Check whether current status of queue is okay or not.
-      // If there is a writer in front of me,
-      // stop the program. This is an error.
-
-
-
+      } while ( find_ahead_writer(tid, record_id) );
 
 #ifdef DBG
 
@@ -199,18 +154,6 @@ bool rw_lock_table::rdlock(uint64_t tid, uint64_t record_id,
     }
   }
 
-#ifdef DBG
-  /* if (readers_count[record_id] == 0 && table[record_id] == RW_READER_LOCK) {
-   *   // Impossible case.
-   *   // When a table status is RW_READER_LOCK,
-   *   // readers_count should be same or more than one.
-   *   //
-   *   // Really impossible? Possible case!
-   *   // If another reader is on top and released lock, it does not change
-   *   // lock status because follow writer is exist.
-   *   assert(false);
-   * } */
-#endif
   //  2-3. Write status to lock table and increase readers_count
   readers_count[record_id]++;
   table[record_id] = RW_READER_LOCK;
@@ -519,7 +462,7 @@ bool rw_lock_table::rd_unlock(uint64_t tid, uint64_t record_id,
       //  2-1-1-2-3. If a reader follows, do not change lock status, and
       //            dequeue myself.
       //
-      
+
       // Find writer and remove edge
       do{
         follower++;
@@ -530,7 +473,7 @@ bool rw_lock_table::rd_unlock(uint64_t tid, uint64_t record_id,
         assert(follower->current_phase != READ);
         wait_for_graph->remove_edge(follower->tid, tid);
       }
-      
+
     }
   } else {
     // 2-1-1-3. Case2. I am not the top of a queue.

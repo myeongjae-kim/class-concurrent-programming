@@ -9,7 +9,7 @@
 #include <vector>
 #include <cstdint>
 
-#define DBG
+// #define DBG
 
 enum phase_t {INVALID, READ, FIRST_WRITE, SECOND_WRITE, COMMIT};
 
