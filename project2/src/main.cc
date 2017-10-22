@@ -4,7 +4,6 @@
  * Due date             : 2017-10-22
  * Compilation Standard : c++11 */
 
-
 #include <iostream>
 #include <queue>
 
@@ -14,6 +13,7 @@
 #include <cstring>
 
 #include <pthread.h>
+#include <unistd.h>
 
 #include "main.h"
 #include "rw_lock_table.h"
@@ -57,6 +57,26 @@ pthread_mutex_t global_mutex = PTHREAD_MUTEX_INITIALIZER;
 void initialize_global_variables();
 void deallocate_global_variables();
 
+
+
+#ifndef DBG
+void* running_animation(void*) {
+  char bars[4] = {'-', '\\', '|', '/'};
+  uint8_t idx = 0;
+
+  while(1) {
+    std::cout << "\r Program is running ... " << bars[idx] << ' ';
+    std::cout.flush();
+
+    idx++;
+    idx = idx % 4;
+    usleep(100000);
+  }
+  
+  return nullptr;
+}
+#endif
+
 int main(const int argc, const char * const argv[])
 {
   // Disable IO sync with libc.
@@ -92,6 +112,13 @@ int main(const int argc, const char * const argv[])
   initialize_global_variables();
   srand(time(NULL));
 
+
+#ifndef DBG
+  // This is a thread to show animation that a program is running.
+  pthread_create(&threads[0], 0, running_animation, nullptr );
+#endif
+
+
   // tid starts from one.
   for (uint64_t i = 1; i < N; i++) {
     if (pthread_create(&threads[i], 0, transaction, (void*)(i) ) < 0) {
@@ -106,6 +133,9 @@ int main(const int argc, const char * const argv[])
   }
 
   deallocate_global_variables();
+
+  std::cout << "\r   **  No overflow!  **       " << std::endl;
+
   return 0;
 }
 

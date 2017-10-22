@@ -11,8 +11,10 @@
 
 // #define DBG
 
+// Every transaction can get a four phases.
 enum phase_t {INVALID, READ, FIRST_WRITE, SECOND_WRITE, COMMIT};
 
+// In the wait queue, needed information is thread id and current phase
 typedef struct _wait_q_elem {
   uint64_t tid;
   
@@ -20,8 +22,15 @@ typedef struct _wait_q_elem {
 } wait_q_elem_t;
 
 
+// Log. Do you need more explanation?
 typedef struct _log {
   uint64_t tid;
+
+  // This is a pointer of a vector that is used to detect cycle and save
+  // cycle member threads. Every thread gets a cycle_member vector.
+  // There are many times to call deadlock detection function in rw_lock_table
+  // object. I would not like to call the constructor of vector whenever
+  // I use the vector in the object, so I made it as a pointer.
   std::vector<uint64_t> *cycle_member;
 
   phase_t current_phase; // for rollback. How many did you write?
