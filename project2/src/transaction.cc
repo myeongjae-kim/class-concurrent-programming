@@ -24,7 +24,7 @@ extern rw_lock_table *lock_table;
 
 // end condition
 extern uint64_t global_execution_order;
-extern int64_t *records;
+extern long long *records;
 
 void print_tid_record(uint64_t tid, uint64_t record_id) {
   std::cout << "[tid: " << tid << ", record_id: " << record_id << "] ";
@@ -125,6 +125,9 @@ void rollback_second_write(log_t& log) {
   }
 
   records[log.j] -= (log.value_of_i + 1);
+
+
+
 }
 void rollback_first_write(log_t& log) {
   print_tid_record(log.tid, log.j);
@@ -210,6 +213,8 @@ void release_locks(log_t& log) {
 void* transaction(void* arg) {
   // record_id
   uint64_t tid = uint64_t(arg);
+  long long old_value;
+  long long target_value;
 
   // make file
   std::string file_name = "thread" + std::to_string(tid) + ".txt";
@@ -306,7 +311,25 @@ void* transaction(void* arg) {
     pthread_mutex_unlock(&global_mutex);
 
     // Write j
+    old_value = records[log.j];
+    target_value = (log.value_of_i + 1);
     log.value_of_j = records[log.j] += log.value_of_i + 1;
+
+    // Overflow checking process
+    if (old_value > 0
+        && target_value > 0
+        && log.value_of_j < 0) {
+      std::cout << "*** Overflow is occurred! ***" << std::endl;
+
+      std::cout << "old_value: \t\t" << old_value << std::endl;
+      std::cout << "target_value:\t\t" << target_value << std::endl;
+      std::cout << "log.value_of_j:\t\t" << log.value_of_j << std::endl;
+
+
+      std::cout << "*** Terminate the program ***" << std::endl;
+      exit(1);
+    }
+
 
     // Phase3: SECOND_WRITE
     log.current_phase = SECOND_WRITE;
@@ -338,7 +361,26 @@ void* transaction(void* arg) {
 
 
     // write k
+    old_value = records[log.k];
+    target_value =  -(log.value_of_i);
+
     log.value_of_k = records[log.k] -= log.value_of_i;
+
+    // Overflow checking process
+    if (old_value < 0
+        && target_value < 0
+        && log.value_of_k > 0) {
+      std::cout << "*** Overflow is occurred! ***" << std::endl;
+
+      std::cout << "old_value: \t\t" << old_value << std::endl;
+      std::cout << "target_value:\t\t" << target_value << std::endl;
+      std::cout << "log.value_of_k:\t\t" << log.value_of_j << std::endl;
+
+
+      std::cout << "*** Terminate the program ***" << std::endl;
+      exit(1);
+    }
+
 
 
     // Phase4: COMMIT

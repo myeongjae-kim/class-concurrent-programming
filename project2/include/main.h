@@ -30,9 +30,9 @@ typedef struct _log {
   uint64_t i; // record idx
   uint64_t j;
   uint64_t k;
-  int64_t value_of_i; // value of record
-  int64_t value_of_j;
-  int64_t value_of_k;
+  long long value_of_i; // value of record
+  long long value_of_j;
+  long long value_of_k;
 } log_t;
 
 

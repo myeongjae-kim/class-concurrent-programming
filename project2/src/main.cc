@@ -45,7 +45,7 @@ bool *threads_abort_flag; // N elements
 
 
 /* Below variables will be an array of R elements. */
-int64_t *records;
+long long *records;
 rw_lock_table *lock_table;
 
 // for deadlock situation. Transaction killing order
@@ -128,7 +128,7 @@ void initialize_global_variables() {
   threads = (pthread_t*)malloc(N * sizeof(*threads));
   assert(threads != nullptr);
 
-  records = (int64_t*)malloc(R * sizeof(*records));
+  records = (long long*)malloc(R * sizeof(*records));
   assert(records != nullptr);
 
   threads_timestamp = (uint64_t*)malloc((N) * sizeof(*threads_timestamp));
