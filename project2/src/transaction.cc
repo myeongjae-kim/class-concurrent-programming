@@ -25,7 +25,7 @@ void print_tid_record(const uint64_t tid, const uint64_t record_id) {
 
 // This function acquires a reader lock.
 // If it fails, return false.
-bool read_record(log_t &log) {
+bool read_record(const log_t &log) {
 #ifdef DBG
   print_tid_record(log.tid, log.i);
   std::cout << "reader lock acquire try"<< std::endl;
@@ -59,7 +59,7 @@ bool read_record(log_t &log) {
 
 // This function acquires a first writer lock.
 // If it fails, return false.
-bool first_write_record(log_t &log) {
+bool first_write_record(const log_t &log) {
 #ifdef DBG
   print_tid_record(log.tid, log.j);
   std::cout << "first writer lock acquire try" << std::endl;
@@ -95,7 +95,7 @@ bool first_write_record(log_t &log) {
 // This function acquires a second writer lock.
 // If it fails, return false.
 
-bool second_write_record(log_t &log) {
+bool second_write_record(const log_t &log) {
 #ifdef DBG
   print_tid_record(log.tid, log.k);
   std::cout << "second writer lock acquire try" << std::endl;
@@ -162,7 +162,7 @@ void rollback_second_write(log_t& log) {
 
 // This function is called when a rollback procedure is executed
 // while the transaction phase is FIRST_WRITE.
-void rollback_first_write(log_t& log) {
+void rollback_first_write(const log_t& log) {
 #ifdef DBG
   print_tid_record(log.tid, log.j);
   std::cout <<
@@ -177,7 +177,7 @@ void rollback_first_write(log_t& log) {
     lock_table->unlock(log.tid, log.j, *log.cycle_member);
   }
 }
-void rollback_read(log_t& log) {
+void rollback_read(const log_t& log) {
 #ifdef DBG
   print_tid_record(log.tid, log.i);
   std::cout << "(rollback_read) read phase rollbacking" << std::endl;
@@ -221,7 +221,7 @@ void rollback(log_t& log) {
 }
 
 // This function is used in global mutex
-void release_locks(log_t& log) {
+void release_locks(const log_t& log) {
   // Release reader lock.
 
 #ifdef DBG
@@ -422,8 +422,6 @@ void* transaction(void* arg) {
       std::cout << "*** Terminate the program ***" << std::endl;
       exit(1);
     }
-
-
 
     // Phase4: COMMIT
     log.current_phase = COMMIT;

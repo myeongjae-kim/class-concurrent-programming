@@ -579,15 +579,13 @@ void rw_lock_table::rdlock_clear_abort(uint64_t tid, uint64_t record_id) {
   // Wake up a threads that waits me.
   // After I am aborted, the thread can proceed.
 
-  // Case1. I am alone in the queue
-  //     1-1. Dequeue myself.
-  // Case2. I am the back of the queue
-  //     2-1. Check whether writer exists ahead of me.
-  //      2-1-1. A writer exists.
-  //        2-1-1-1. Remove edge from me to the writer.
-  //        2-1-1-2. Dequeue myself.
-  //      2-1-2. A writer does not exist.
-  //        2-1-2-1. Dequeue myself.
+  // I must be at the back of the queue
+  // Check whether writer exists ahead of me.
+  //  1. A writer exists.
+  //    1-1. Remove edge from me to the writer.
+  //    1-2. Dequeue myself.
+  //  2. A writer does not exist.
+  //    2-1. Dequeue myself.
 
 
   // Precondtion: I exist in queue!
@@ -616,50 +614,42 @@ void rw_lock_table::rdlock_clear_abort(uint64_t tid, uint64_t record_id) {
   // Where am I?
   assert(myself != record_wait_queues[record_id].end());
 
-  // Case1. I am alone in the queue
-  if (record_wait_queues[record_id].size() == 1) {
-    assert(record_wait_queues[record_id][0].tid == tid);
-    // 1-1. Dequeue myself.
+  // I must be in the back of the queue
+  assert(myself == record_wait_queues[record_id].end() - 1);
 
-    print_tid_record(tid, record_id);
-    std::cout << "(rdlock_clear_abort) Case1: I am alone in the queue." << std::endl;
-
-
-    // Case2. I am the back of the queue
-  } else {
-    // I must be in the back of the queue
-    assert(myself == record_wait_queues[record_id].end() - 1);
-
-    // 2-1. Check whether writer exists ahead of me.
-
-    print_tid_record(tid, record_id);
-    std::cout << "(rdlock_clear_abort) Case2: I am the back of the queue." << std::endl;
-
-    //  Writer ahead of me.
-    auto ahead_writer = record_wait_queues[record_id].rbegin() + 1;
-    // Search from the back of the queue.
-    // If a writer is found, break.
-    while (ahead_writer != record_wait_queues[record_id].rend()
-        && ahead_writer->current_phase == READ) {
-      ahead_writer++;
-    }
-
-    //  2-1-1. A writer exists.
-    if (ahead_writer != record_wait_queues[record_id].rend()) {
-      assert(ahead_writer->current_phase != READ);
-
-      // 2-1-1-1. Remove edge from me to the writer.
-      wait_for_graph->remove_edge(tid, ahead_writer->tid);
-
-      // 2-1-1-2. Dequeue myself.
-
-      // 2-1-2. A writer does not exist.
-    } else {
-      assert(ahead_writer == record_wait_queues[record_id].rend());
-      //  2-1-2-1. Dequeue myself.
-    }
-  }
   
+  // Check whether writer exists ahead of me.
+
+  print_tid_record(tid, record_id);
+  std::cout << "(rdlock_clear_abort) Case2: I am the back of the queue." << std::endl;
+
+
+  //    2-1. Dequeue myself.
+
+  //  Writer ahead of me.
+  auto ahead_writer = record_wait_queues[record_id].rbegin() + 1;
+  // Search from the back of the queue.
+  // If a writer is found, break.
+  while (ahead_writer != record_wait_queues[record_id].rend()
+      && ahead_writer->current_phase == READ) {
+    ahead_writer++;
+  }
+
+  //  1. A writer exists.
+  if (ahead_writer != record_wait_queues[record_id].rend()) {
+    assert(ahead_writer->current_phase != READ);
+
+    // 1-1. Remove edge from me to the writer.
+    wait_for_graph->remove_edge(tid, ahead_writer->tid);
+
+    // 1-2. Dequeue myself.
+
+    // 2. A writer does not exist.
+  } else {
+    assert(ahead_writer == record_wait_queues[record_id].rend());
+    //  2-1. Dequeue myself.
+  }
+
   // Finally, dequeue myself!
   record_wait_queues[record_id].erase(myself);
 
@@ -685,15 +675,13 @@ void rw_lock_table::wrlock_clear_abort(uint64_t tid,
 
   // Find me in the queue.
 
-  // Case1. I am alone in the queue
-  //     1-1. Dequeue myself.
-  // Case2. I am the back of the queue
-  //     2-1. There must be a thread I am waiting,
-  //         Remove edge from me to the thread.
-  //      2-1-1. If there are readers ahead of me, remove all edges
-  //            from me to the readers which are added before entering
-  //            current abort function.
-  //     2-2. Dequeue myself.
+  // I must be at the back of the queue
+  //  1. There must be a thread I am waiting,
+  //    Remove edge from me to the thread.
+  //   1-1. If there are readers ahead of me, remove all edges
+  //       from me to the readers which are added before entering
+  //       current abort function.
+  //  2. Dequeue myself.
 
   // Precondtion: I exist in queue!
   assert(record_wait_queues[record_id].size() != 0);
@@ -715,56 +703,43 @@ void rw_lock_table::wrlock_clear_abort(uint64_t tid,
   // Where am I?
   assert(myself != record_wait_queues[record_id].end());
 
-  // Case1. I am alone in the queue
-  if (record_wait_queues[record_id].size() == 1) {
-    assert(record_wait_queues[record_id][0].tid == tid);
-    // 1-1. Dequeue myself.
+  // I must be in the back of the queue
+  assert(myself == record_wait_queues[record_id].end() - 1);
+
+  // 1. There must be a thread I am waiting,
+  //     Remove edge from me to the thread.
+  assert(record_wait_queues[record_id].size() >= 2);
 
 #ifdef DBG
-    print_tid_record(tid, record_id);
-    std::cout << "(wrlock_clear_abort) Case1: I am alone in the queue." << std::endl;
+  print_tid_record(tid, record_id);
+  std::cout << "(wrlock_clear_abort) Case2: I am the back of the queue." << std::endl;
 #endif
 
-    // Case2. I am the back of the queue
-  } else {
-    // I must be in the back of the queue
-    assert(myself == record_wait_queues[record_id].end() - 1);
+  // 1-1. If there are readers ahead of me, remove all edges
+  //       from me to the readers which are added before entering
+  //       current abort function.
 
-    // 2-1. There must be a thread I am waiting,
-    //     Remove edge from me to the thread.
-    assert(record_wait_queues[record_id].size() >= 2);
+  // edge from me to the thread.
+  auto ahead = myself;
 
-#ifdef DBG
-    print_tid_record(tid, record_id);
-    std::cout << "(wrlock_clear_abort) Case2: I am the back of the queue." << std::endl;
-#endif
-
-    // 2-1-1. If there are readers ahead of me, remove all edges
-    //       from me to the readers which are added before entering
-    //       current abort function.
-
-    // edge from me to the thread.
-    auto ahead = myself;
-
-    if ( (ahead - 1) ->current_phase == READ) {
-      //ahead is reader
-      do {
-        ahead--;
-        wait_for_graph->remove_edge(tid, ahead->tid);
-      } while (
-          ahead != record_wait_queues[record_id].begin()
-          && (ahead - 1)->current_phase == READ
-          );
-
-    } else {
-      //ahead is writer
+  if ( (ahead - 1) ->current_phase == READ) {
+    //ahead is reader
+    do {
       ahead--;
       wait_for_graph->remove_edge(tid, ahead->tid);
-    }
+    } while (
+        ahead != record_wait_queues[record_id].begin()
+        && (ahead - 1)->current_phase == READ
+        );
+
+  } else {
+    //ahead is writer
+    ahead--;
+    wait_for_graph->remove_edge(tid, ahead->tid);
+  }
 
 
-    // 2-2. Dequeue myself.
-  } 
+  // 2-2. Dequeue myself.
 
   // Finally dequeue myself.
   record_wait_queues[record_id].erase(myself);
