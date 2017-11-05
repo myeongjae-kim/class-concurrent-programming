@@ -7,7 +7,8 @@
 #ifndef __MAIN_H__
 #define __MAIN_H__
 
-#include <stdint.h>
+#include <cstdint>
+#include <cstring>
 typedef int64_t T;
 
 #endif

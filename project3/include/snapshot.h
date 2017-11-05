@@ -8,12 +8,12 @@
 #define __SNAPSHOT_H__
 
 #include "main.h"
-#include <vector>
+#include <array>
 
 class snapshot_t {
 public:
   virtual void update(T v, const int64_t) = 0;
-  virtual std::vector<T> scan() = 0;
+  virtual T* scan() = 0;
 };
 
 #endif

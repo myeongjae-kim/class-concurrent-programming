@@ -6,6 +6,7 @@
 
 #include "stamped_value.h"
 
+extern int64_t num_of_threads;
 
 stamped_value_t::stamped_value_t(T init) {
   stamp = 0;

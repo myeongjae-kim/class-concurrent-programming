@@ -10,11 +10,12 @@ public:
   virtual ~WFSnapshot_t ();
 
   void update(T value, const int64_t tid);
-  std::vector<T> scan();
+  T* scan();
 
 private:
-  std::vector< stamped_snap_t > a_table;
-  std::vector< stamped_snap_t > collect();
+  stamped_snap_t** a_table;
+  int capacity;
+  stamped_snap_t** collect();
 };
 
 #endif

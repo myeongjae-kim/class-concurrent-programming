@@ -16,6 +16,7 @@ WFSnapshot_t *ss;
 
 bool end = false;
 int64_t* num_of_update;
+int64_t num_of_threads;
 
 void* thread_func(void* arg) {
   int64_t tid = (int64_t)arg;
@@ -36,7 +37,7 @@ int main(int argc, char *argv[]) {
     exit(1);
   }
 
-  int num_of_threads = atoi(argv[1]);
+  num_of_threads = atoi(argv[1]);
   if (num_of_threads == 0) {
     std::cout << "<# of threads> should be numeric value and bigger than  0" << std::endl;
     exit(1);
