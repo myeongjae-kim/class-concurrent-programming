@@ -1,10 +1,14 @@
+/** Metadata
+ * Author               : Kim, Myeong Jae
+ * File Name            : stamped_snap.h
+ * Due date             : 2017-11-6
+ * Compilation Standard : c++11 */
 
 
 #ifndef __STAMPED_SNAP_H__
 #define __STAMPED_SNAP_H__
 
 #include "main.h"
-#include <array>
 
 class stamped_snap_t
 {

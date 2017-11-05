@@ -8,7 +8,6 @@
 #define __SNAPSHOT_H__
 
 #include "main.h"
-#include <array>
 
 class snapshot_t {
 public:

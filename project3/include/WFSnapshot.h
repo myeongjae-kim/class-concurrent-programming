@@ -1,3 +1,9 @@
+/** Metadata
+ * Author               : Kim, Myeong Jae
+ * File Name            : WFSnapshot.h
+ * Due date             : 2017-11-6
+ * Compilation Standard : c++11 */
+
 #ifndef __WFSNAPSHOT_H__
 #define __WFSNAPSHOT_H__
 

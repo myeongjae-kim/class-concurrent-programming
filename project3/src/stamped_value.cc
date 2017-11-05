@@ -1,6 +1,6 @@
 /** Metadata
  * Author               : Kim, Myeong Jae
- * File Name            : main.cc
+ * File Name            : stamped_value.cc
  * Due date             : 2017-11-6
  * Compilation Standard : c++11 */
 

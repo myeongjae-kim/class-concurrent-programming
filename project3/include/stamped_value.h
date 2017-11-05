@@ -1,14 +1,11 @@
 /** Metadata
  * Author               : Kim, Myeong Jae
- * File Name            : snapshot.h
+ * File Name            : stamped_value.h
  * Due date             : 2017-11-6
  * Compilation Standard : c++11 */
 
 #ifndef __STAMPED_VALUE_H__
 #define __STAMPED_VALUE_H__
-
-#define IN
-#define OUT
 
 #include "main.h"
 

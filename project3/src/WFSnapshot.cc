@@ -1,3 +1,9 @@
+/** Metadata
+ * Author               : Kim, Myeong Jae
+ * File Name            : WFSnapshot.cc
+ * Due date             : 2017-11-6
+ * Compilation Standard : c++11 */
+
 #include "WFSnapshot.h"
 
 extern int64_t num_of_threads;
