@@ -10,7 +10,6 @@
 
 
 #include "snapshot.h"
-#include "stamped_value.h"
 #include "WFSnapshot.h"
 
 WFSnapshot_t *ss;
