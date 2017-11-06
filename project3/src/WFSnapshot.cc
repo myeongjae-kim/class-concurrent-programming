@@ -60,8 +60,7 @@ T* WFSnapshot_t::scan() {
   stamped_snap_t** old_copy;
   stamped_snap_t** new_copy;
 
-  bool *moved = new bool[num_of_threads];
-  memset(moved, 0, sizeof(*moved) * num_of_threads);
+  bool *moved = new bool[num_of_threads]();
 
   old_copy = collect();
 collect:

@@ -11,8 +11,7 @@ extern int64_t num_of_threads;
 stamped_snap_t::stamped_snap_t (T value) {
   this->stamp = 0;
   this->value = value;
-  this->snap = new T[num_of_threads];
-  memset(this->snap, 0, sizeof(*this->snap) * num_of_threads);
+  this->snap = new T[num_of_threads]();
 }
 
 stamped_snap_t::stamped_snap_t (
