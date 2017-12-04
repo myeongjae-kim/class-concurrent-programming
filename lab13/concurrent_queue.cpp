@@ -52,18 +52,12 @@ void enqueue(int key) {
   // 이 상황에서 ticket 5의 행동에 문제가 있다.
   // while의 2줄 사이에서 context switch가 일어나면
   // 데이터가 들어있는데 덮어씌운다던가, 데이터가 없는데 빼가는 문제가 생김.
-  // 아래처럼 flag값을 읽어와서 들고있으면 문제 생기지 않는다.
+  // 미리 flag값을 읽어와서 들고있으면 문제 생기지 않는다.
+  // 혹은 아래처럼 2로 나누지 말고 round값을 곱하든가.
 
-  while (1){
-    int flag = queue[idx].flag;
-
-    if ((flag & 1) == 1// data exists
-        || (flag / 2) != round){  // or not my turn 
-      // printf("[ticket:%d, key:%d] yield\n", ticket, key);
-      pthread_yield();
-    } else {
-      break;
-    }
+  while ((queue[idx].flag & 1) == 1// data exists
+        || (queue[idx].flag) != round * 2) {
+    pthread_yield();
   }
 
   queue[idx].key = key;
@@ -76,17 +70,9 @@ int dequeue(void) {
   int idx = ticket % QUEUE_SIZE;
   int round = ticket / QUEUE_SIZE;
 
-
-  while (1){
-    int flag = queue[idx].flag;
-
-    if ((flag & 1) == 0// data exists
-        || (flag / 2) != round){  // or not my turn 
-      // printf("[ticket:%d] yield\n", ticket);
-      pthread_yield();
-    } else {
-      break;
-    }
+  while ((queue[idx].flag & 1) == 0// data not exists
+        || (queue[idx].flag) != round * 2 + 1) {
+    pthread_yield();
   }
 
   int ret_key = queue[idx].key;
