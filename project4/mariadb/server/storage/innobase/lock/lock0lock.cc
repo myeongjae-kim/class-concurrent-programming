@@ -2457,7 +2457,7 @@ lock_rec_lock_fast(
 
 	trx_t*	trx = thr_get_trx(thr);
 
-	lock_rec_req_status	status = LOCK_REC_SUCCESS;
+	lock_rec_req_status	status = LOCK_REC_SUCCESS; // Implicit lock is acquired
 
 	if (lock == NULL) {
 
@@ -2468,7 +2468,7 @@ lock_rec_lock_fast(
 			rec_lock.create(trx, false, true);
 		}
 
-		status = LOCK_REC_SUCCESS_CREATED;
+		status = LOCK_REC_SUCCESS_CREATED; // Explicit lock is acquired
 	} else {
 		trx_mutex_enter(trx);
 
