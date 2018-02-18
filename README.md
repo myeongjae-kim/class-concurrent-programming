@@ -4,12 +4,10 @@ This repository is a result of projects which I designed and implemented in Conc
 
 ## Table of Contents
 
-* [Subject: Concurrent Programming](#subject-concurrent-programming)
-  * [Table of Contents](#table-of-contents)
-  * [Project 1: Signal, Hyunseok the Astronomer](#project-1-signal-hyunseok-the-astronomer)
-  * [Project 2: Simple Two\-phase Locking with Readers\-writer Lock](#project-2-simple-two-phase-locking-with-readers-writer-lock)
-  * [Project 3: Wait\-Free Snapshot](#project-3-wait-free-snapshot)
-  * [Project 4: Scalable Lock Manager](#project-4-scalable-lock-manager)
+* [Project 1: Signal, Hyunseok the Astronomer](#project-1-signal-hyunseok-the-astronomer)
+* [Project 2: Simple Two\-phase Locking with Readers\-writer Lock](#project-2-simple-two-phase-locking-with-readers-writer-lock)
+* [Project 3: Wait\-Free Snapshot](#project-3-wait-free-snapshot)
+* [Project 4: Scalable Lock Manager](#project-4-scalable-lock-manager)
 
 ## [Project 1: Signal, Hyunseok the Astronomer](#table-of-contents)
 
