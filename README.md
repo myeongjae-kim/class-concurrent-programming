@@ -4,12 +4,12 @@ This repository is a result of projects which I designed and implemented in Conc
 
 ## Table of Contents
 
-* [Project 0: Simple Unix Shell](#project-0-simple-unix-shell)
-* [Project 1: MLFQ and Stride scheduling](#project-1-mlfq-and-stride-scheduling)
-  * [MLFQ(Multi Level Feedback Queue)](#mlfqmulti-level-feedback-queue)
-  * [Stride Scheduling](#stride-scheduling)
-* [Project 2: Light\-weight Process (thread)](#project-2-light-weight-process-thread)
-* [Project 3: File system](#project-3-file-system)
+* [Subject: Concurrent Programming](#subject-concurrent-programming)
+  * [Table of Contents](#table-of-contents)
+  * [Project 1: Signal, Hyunseok the Astronomer](#project-1-signal-hyunseok-the-astronomer)
+  * [Project 2: Simple Two\-phase Locking with Readers\-writer Lock](#project-2-simple-two-phase-locking-with-readers-writer-lock)
+  * [Project 3: Wait\-Free Snapshot](#project-3-wait-free-snapshot)
+  * [Project 4: Scalable Lock Manager](#project-4-scalable-lock-manager)
 
 ## [Project 1: Signal, Hyunseok the Astronomer](#table-of-contents)
 
