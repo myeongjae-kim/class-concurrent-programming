@@ -4,10 +4,13 @@ This repository is a result of projects which I designed and implemented in Conc
 
 ## Table of Contents
 
-* [Project 1: Signal, Hyunseok the Astronomer](#project-1-signal-hyunseok-the-astronomer)
-* [Project 2: Simple Two\-phase Locking with Readers\-writer Lock](#project-2-simple-two-phase-locking-with-readers-writer-lock)
-* [Project 3: Wait\-Free Snapshot](#project-3-wait-free-snapshot)
-* [Project 4: Scalable Lock Manager](#project-4-scalable-lock-manager)
+* [<a href="\#table\-of\-contents">Project 1: Signal, Hyunseok the Astronomer</a>](#project-1-signal-hyunseok-the-astronomer)
+* [<a href="\#table\-of\-contents">Project 2: Simple Two\-phase Locking with Readers\-writer Lock</a>](#project-2-simple-two-phase-locking-with-readers-writer-lock)
+  * [Readers\-Writer Lock](#readers-writer-lock)
+  * [Two\-phase Locking](#two-phase-locking)
+  * [Strict Two\-phase Locing](#strict-two-phase-locing)
+* [<a href="\#table\-of\-contents">Project 3: Wait\-Free Snapshot</a>](#project-3-wait-free-snapshot)
+* [<a href="\#table\-of\-contents">Project 4: Scalable Lock Manager</a>](#project-4-scalable-lock-manager)
 
 ## [Project 1: Signal, Hyunseok the Astronomer](#table-of-contents)
 
@@ -25,11 +28,11 @@ Among 36 students, my ranking was #6. [Here](https://archive.is/at7oY) is score 
 
 [Codes](https://github.com/hrzon/Class_ConcurrentProgramming/tree/master/project2)
 
-### Readers-Writer Lock
+### [Readers-Writer Lock](#table-of-contents)
 
 It is a lock that many readers can acquire or only one writer acquire. In a transaction, read operation does not change a value of records, so read operation does not violate ACID property of transacntion even though plural readers access the record simultaneously. The readers-writer lock can improve throughput via permitting the access of plural readers.
 
-### Two-phase Locking
+### [Two-phase Locking](#table-of-contents)
 
 The Two Phase Locking (2PL) is a kind of locking policy to guarantee atomicity, consistency, and isolation property of transaction in the multicore environment. It has two phase like its name.
 
@@ -39,7 +42,7 @@ Second phase is releasing phase. In this phase, locks are only released. No reco
 
 But there is a problem when a transaction is aborted. Assume that a transaction is aborted at the end of releasing phase, and other transactions used records that the transaction modified. Since the transaction has been aborted, the other transactions also must be aborted. It makes huge overhead. This problem is called **cascading abort**.
 
-### Strict Two-phase Locing
+### [Strict Two-phase Locing](#table-of-contents)
 
 This locking algorithm does not release any locks until the end of a transaction. If the transaction modified some records, other transaction cannot read the records. It removes the situation that cascading abort problem occurs.
 
