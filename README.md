@@ -4,13 +4,13 @@ This repository is a result of projects which I designed and implemented in Conc
 
 ## Table of Contents
 
-* [<a href="\#table\-of\-contents">Project 1: Signal, Hyunseok the Astronomer</a>](#project-1-signal-hyunseok-the-astronomer)
-* [<a href="\#table\-of\-contents">Project 2: Simple Two\-phase Locking with Readers\-writer Lock</a>](#project-2-simple-two-phase-locking-with-readers-writer-lock)
+* [Project 1: Signal, Hyunseok the Astronomer](#project-1-signal-hyunseok-the-astronomer)
+* [Project 2: Simple Two\-phase Locking with Readers\-writer Lock](#project-2-simple-two-phase-locking-with-readers-writer-lock)
   * [Readers\-Writer Lock](#readers-writer-lock)
   * [Two\-phase Locking](#two-phase-locking)
   * [Strict Two\-phase Locing](#strict-two-phase-locing)
-* [<a href="\#table\-of\-contents">Project 3: Wait\-Free Snapshot</a>](#project-3-wait-free-snapshot)
-* [<a href="\#table\-of\-contents">Project 4: Scalable Lock Manager</a>](#project-4-scalable-lock-manager)
+* [Project 3: Wait\-Free Snapshot](#project-3-wait-free-snapshot)
+* [Project 4: Scalable Lock Manager](#project-4-scalable-lock-manager)
 
 ## [Project 1: Signal, Hyunseok the Astronomer](#table-of-contents)
 
@@ -67,3 +67,4 @@ In the lock manager in MariaDB, there is bottleneck point. Because of the point,
 This project is removing the bottleneck point by modifying coarse-grained lock to fine-grained lock guaranteeing ACID property.
 
 I did not solved the problem yet. Still I am solving it because my graduation project is this problem.
+
