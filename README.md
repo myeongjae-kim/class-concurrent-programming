@@ -8,7 +8,7 @@ This repository is a result of projects which I designed and implemented in Conc
 * [Project 2: Simple Two\-phase Locking with Readers\-writer Lock](#project-2-simple-two-phase-locking-with-readers-writer-lock)
   * [Readers\-Writer Lock](#readers-writer-lock)
   * [Two\-phase Locking](#two-phase-locking)
-  * [Strict Two\-phase Locing](#strict-two-phase-locing)
+  * [Strict Two\-phase Locking](#strict-two-phase-locking)
 * [Project 3: Wait\-Free Snapshot](#project-3-wait-free-snapshot)
 * [Project 4: Scalable Lock Manager](#project-4-scalable-lock-manager)
 
@@ -42,7 +42,7 @@ Second phase is releasing phase. In this phase, locks are only released. No reco
 
 But there is a problem when a transaction is aborted. Assume that a transaction is aborted at the end of releasing phase, and other transactions used records that the transaction modified. Since the transaction has been aborted, the other transactions also must be aborted. It makes huge overhead. This problem is called **cascading abort**.
 
-### [Strict Two-phase Locing](#table-of-contents)
+### [Strict Two-phase Locking](#table-of-contents)
 
 This locking algorithm does not release any locks until the end of a transaction. If the transaction modified some records, other transaction cannot read the records. It removes the situation that cascading abort problem occurs.
 
