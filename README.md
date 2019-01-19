@@ -14,9 +14,9 @@ This repository is a result of projects which I designed and implemented in Conc
 
 ## [Project 1: Signal, Hyunseok the Astronomer](#table-of-contents)
 
-[Wiki](https://github.com/hrzon/Class_ConcurrentProgramming/wiki/project1)
+[Wiki](https://github.com/myeongjae-kim/class-concurrent-programming/wiki/project1)
 
-[Codes](https://github.com/hrzon/Class_ConcurrentProgramming/tree/master/project1)
+[Codes](https://github.com/myeongjae-kim/class-concurrent-programming/tree/master/project1)
 
 This project is solving 'Order-Preserving Multiple Pattern Matching' problem using multithread programming. I used Trie structure.
 
@@ -24,9 +24,9 @@ Among 36 students, my ranking was #6. [Here](https://archive.is/at7oY) is score 
 
 ## [Project 2: Simple Two-phase Locking with Readers-writer Lock](#table-of-contents)
 
-[Wiki](https://github.com/hrzon/Class_ConcurrentProgramming/wiki/project2)
+[Wiki](https://github.com/myeongjae-kim/class-concurrent-programming/wiki/project2)
 
-[Codes](https://github.com/hrzon/Class_ConcurrentProgramming/tree/master/project2)
+[Codes](https://github.com/myeongjae-kim/class-concurrent-programming/tree/master/project2)
 
 ### [Readers-Writer Lock](#table-of-contents)
 
@@ -48,9 +48,9 @@ This locking algorithm does not release any locks until the end of a transaction
 
 ## [Project 3: Wait-Free Snapshot](#table-of-contents)
 
-[Wiki](https://github.com/hrzon/Class_ConcurrentProgramming/wiki/project3)
+[Wiki](https://github.com/myeongjae-kim/class-concurrent-programming/wiki/project3)
 
-[Codes](https://github.com/hrzon/Class_ConcurrentProgramming/tree/master/project3)
+[Codes](https://github.com/myeongjae-kim/class-concurrent-programming/tree/master/project3)
 
 In the text book(The Art of Multiprocessor Programming, Maurice Herlihy & Sir Shavit), There are codes of implementing wait-free snapshot. These codes are wrtten in Java.
 
@@ -58,9 +58,9 @@ This project is writing wait-free snapshot code in C++. The biggest obstacle was
 
 ## [Project 4: Scalable Lock Manager](#table-of-contents)
 
-[Wiki](https://github.com/hrzon/Class_ConcurrentProgramming/wiki/project4)
+[Wiki](https://github.com/myeongjae-kim/class-concurrent-programming/wiki/project4)
 
-[Codes](https://github.com/hrzon/Class_ConcurrentProgramming/tree/master/project4/mariadb)
+[Codes](https://github.com/myeongjae-kim/class-concurrent-programming/tree/master/project4/mariadb)
 
 In the lock manager in MariaDB, there is bottleneck point. Because of the point, transaction's throughput is not increased even though CPU's core number is increased.
 
